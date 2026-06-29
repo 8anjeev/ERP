@@ -1,0 +1,1267 @@
+import { useState, useMemo, useCallback } from "react";
+import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+const ACCENT="#F59E0B", SIDEBAR="#0E1F35";
+
+const PROJECTS_INIT=[
+  {id:1,code:"SNJ-001",name:"Sanjineer Heights",   location:"Kharghar, NM",  type:"Residential",status:"Running",  progress:68, budget:45000000,spent:31500000,units:120,sold:87, rera:"P52000012345",pm:"Rajesh Kumar", start:"2023-01-15",end:"2025-06-30",wings:3,floors:12},
+  {id:2,code:"SNJ-002",name:"Business Park Alpha",  location:"Vashi, NM",     type:"Commercial", status:"Running",  progress:42, budget:78000000,spent:33200000,units:64, sold:31, rera:"P52000023456",pm:"Priya Sharma", start:"2023-06-01",end:"2026-03-31",wings:2,floors:18},
+  {id:3,code:"SNJ-003",name:"Green Valley Phase 2", location:"Panvel, NM",    type:"Residential",status:"Planning", progress:8,  budget:62000000,spent:4800000, units:200,sold:45, rera:"P52000034567",pm:"Amit Desai",   start:"2024-04-01",end:"2027-12-31",wings:5,floors:10},
+  {id:4,code:"SNJ-004",name:"Skyline Residency",    location:"Belapur, NM",   type:"Mixed Use",  status:"Completed",progress:100,budget:38000000,spent:37200000,units:96, sold:96, rera:"P52000045678",pm:"Sunita Patil", start:"2021-08-01",end:"2024-02-28",wings:2,floors:15},
+  {id:5,code:"SNJ-005",name:"Harbour View Towers",  location:"Nerul, NM",     type:"Residential",status:"Running",  progress:55, budget:92000000,spent:51000000,units:280,sold:156,rera:"P52000056789",pm:"Vikram Nair",  start:"2022-11-01",end:"2026-08-31",wings:4,floors:20},
+  {id:6,code:"SNJ-006",name:"Tech Park Sector 7",   location:"Airoli, NM",    type:"Commercial", status:"Delayed",  progress:31, budget:55000000,spent:19800000,units:48, sold:12, rera:"P52000067890",pm:"Deepak Mehta",start:"2023-03-15",end:"2025-12-31",wings:1,floors:22},
+];
+const ALL_ENGINEERS=[
+  {id:"ENG-001",name:"Rahul Kulkarni",  role:"Site Engineer",     dept:"Site",    phone:"+91-98100 00003",email:"rahul.k@sanjineer.com",  avatar:"RK",expertise:["RCC","Formwork","Concreting"]},
+  {id:"ENG-002",name:"Ankit Patil",     role:"Site Engineer",     dept:"Site",    phone:"+91-98100 00005",email:"ankit.p@sanjineer.com",  avatar:"AP",expertise:["Brickwork","Plastering","Finishing"]},
+  {id:"ENG-003",name:"Snehal Desai",    role:"Planning Engineer",  dept:"Planning",phone:"+91-98100 00009",email:"snehal.d@sanjineer.com", avatar:"SD",expertise:["Scheduling","BOQ","Estimation"]},
+  {id:"ENG-004",name:"Kiran Bhosale",   role:"Site Engineer",     dept:"Site",    phone:"+91-98100 00010",email:"kiran.b@sanjineer.com",  avatar:"KB",expertise:["MEP","Electrical","Plumbing"]},
+  {id:"ENG-005",name:"Pradeep Sawant",  role:"Site Engineer",     dept:"Site",    phone:"+91-98100 00011",email:"pradeep.s@sanjineer.com",avatar:"PS",expertise:["Waterproofing","Tiling","Painting"]},
+  {id:"ENG-006",name:"Deepika Rane",    role:"Quantity Surveyor", dept:"QS",      phone:"+91-98100 00004",email:"deepika.r@sanjineer.com",avatar:"DR",expertise:["BOQ","Billing","Rate Analysis"]},
+  {id:"ENG-007",name:"Mahesh Pawar",    role:"Site Supervisor",   dept:"Site",    phone:"+91-98100 00012",email:"mahesh.p@sanjineer.com", avatar:"MP",expertise:["Labour Mgmt","Safety","Quality"]},
+  {id:"ENG-008",name:"Suresh Jadhav",   role:"Jr. Site Engineer", dept:"Site",    phone:"+91-98100 00013",email:"suresh.j@sanjineer.com", avatar:"SJ",expertise:["Survey","Layout","Inspection"]},
+];
+const DEFAULT_ASSIGNMENTS=[
+  {engId:"ENG-001",projectId:1,role:"Lead SE",       since:"2023-01-15",canDPR:true, canPO:false,canMeeting:true, canStock:true},
+  {engId:"ENG-002",projectId:1,role:"SE – Finishes", since:"2023-06-01",canDPR:true, canPO:false,canMeeting:false,canStock:true},
+  {engId:"ENG-006",projectId:1,role:"QS",            since:"2023-01-15",canDPR:false,canPO:true, canMeeting:true, canStock:true},
+  {engId:"ENG-001",projectId:2,role:"Lead SE",       since:"2023-06-15",canDPR:true, canPO:false,canMeeting:true, canStock:true},
+  {engId:"ENG-004",projectId:2,role:"MEP SE",        since:"2023-08-01",canDPR:true, canPO:false,canMeeting:true, canStock:true},
+  {engId:"ENG-002",projectId:3,role:"SE",            since:"2024-04-01",canDPR:true, canPO:false,canMeeting:true, canStock:true},
+  {engId:"ENG-003",projectId:3,role:"Planning Engr", since:"2024-04-01",canDPR:false,canPO:true, canMeeting:true, canStock:false},
+  {engId:"ENG-005",projectId:3,role:"SE – Finishing",since:"2024-06-01",canDPR:true, canPO:false,canMeeting:false,canStock:true},
+  {engId:"ENG-007",projectId:4,role:"Supervisor",    since:"2021-08-01",canDPR:true, canPO:false,canMeeting:false,canStock:true},
+  {engId:"ENG-004",projectId:5,role:"Lead MEP SE",   since:"2022-11-01",canDPR:true, canPO:true, canMeeting:true, canStock:true},
+  {engId:"ENG-005",projectId:5,role:"SE – Finishing",since:"2023-03-01",canDPR:true, canPO:false,canMeeting:true, canStock:true},
+  {engId:"ENG-008",projectId:5,role:"Jr SE",         since:"2023-07-01",canDPR:true, canPO:false,canMeeting:false,canStock:false},
+  {engId:"ENG-001",projectId:6,role:"SE",            since:"2023-03-15",canDPR:true, canPO:false,canMeeting:true, canStock:true},
+  {engId:"ENG-003",projectId:6,role:"Planning Engr", since:"2023-03-15",canDPR:false,canPO:true, canMeeting:true, canStock:false},
+];
+const MONTHLY_REV=[
+  {m:"Jan",rev:12.4,exp:8.2,profit:4.2},{m:"Feb",rev:15.1,exp:9.8,profit:5.3},{m:"Mar",rev:18.7,exp:11.2,profit:7.5},
+  {m:"Apr",rev:14.3,exp:10.1,profit:4.2},{m:"May",rev:22.5,exp:13.4,profit:9.1},{m:"Jun",rev:19.8,exp:12.7,profit:7.1},
+  {m:"Jul",rev:24.2,exp:14.9,profit:9.3},{m:"Aug",rev:21.6,exp:13.2,profit:8.4},{m:"Sep",rev:28.3,exp:16.1,profit:12.2},
+  {m:"Oct",rev:25.7,exp:15.4,profit:10.3},{m:"Nov",rev:31.2,exp:18.2,profit:13.0},{m:"Dec",rev:27.9,exp:16.8,profit:11.1},
+];
+const SALES_DATA=[{m:"Jan",booked:18,inq:45},{m:"Feb",booked:23,inq:62},{m:"Mar",booked:31,inq:78},{m:"Apr",booked:19,inq:51},{m:"May",booked:42,inq:95},{m:"Jun",booked:38,inq:87}];
+const MATERIALS_INIT=[
+  {id:1,code:"MAT-001",name:"Cement OPC 53",     cat:"Binding",   unit:"Bags",  stock:1250, min:500, rate:380,  value:475000, supplier:"ACC Ltd",     project:1},
+  {id:2,code:"MAT-002",name:"TMT Steel 16mm",    cat:"Structural",unit:"MT",    stock:48.5, min:20,  rate:65000,value:3152500,supplier:"TATA Steel",  project:1},
+  {id:3,code:"MAT-003",name:"River Sand",        cat:"Aggregate", unit:"CFT",   stock:3200, min:1000,rate:28,   value:89600,  supplier:"Local Supp.", project:2},
+  {id:4,code:"MAT-004",name:"Crushed Stone 20mm",cat:"Aggregate", unit:"CFT",   stock:4100, min:1500,rate:22,   value:90200,  supplier:"Stone Quarry",project:1},
+  {id:5,code:"MAT-005",name:"Red Bricks",        cat:"Masonry",   unit:"Nos",   stock:45000,min:20000,rate:8,   value:360000, supplier:"Kiln Works",  project:3},
+  {id:6,code:"MAT-006",name:"Plywood 12mm BWP",  cat:"Shuttering",unit:"Sheets",stock:320,  min:150, rate:1250, value:400000, supplier:"CenturyPly",  project:5},
+  {id:7,code:"MAT-007",name:"UPVC Pipes 4inch",  cat:"Plumbing",  unit:"Rft",   stock:820,  min:400, rate:185,  value:151700, supplier:"Ashirvad",    project:2},
+  {id:8,code:"MAT-008",name:"Ceramic Tiles 600mm",cat:"Finishing",unit:"Boxes", stock:180,  min:200, rate:1800, value:324000, supplier:"Kajaria",     project:5},
+];
+const LABOUR=[
+  {id:1,name:"Mohan RCC Works",    type:"Contractor",trade:"RCC Work",  total:45,present:38,wages:850, project:1},
+  {id:2,name:"Raju Mistri & Party",type:"Contractor",trade:"Brickwork", total:28,present:24,wages:750, project:1},
+  {id:3,name:"Shiv Labour Contr.", type:"Contractor",trade:"Plumbing",  total:12,present:10,wages:900, project:2},
+  {id:4,name:"Om Electricals",     type:"Contractor",trade:"Electrical",total:8, present:8, wages:1100,project:2},
+  {id:5,name:"Daily Labour Pool",  type:"Direct",    trade:"General",   total:35,present:29,wages:650, project:1},
+];
+const FLATS_INIT=[
+  {floor:1,units:[
+    {no:"101",type:"1BHK",carpet:450,status:"Sold",    facing:"East", price:4500000,buyer:"Ramesh Sharma"},
+    {no:"102",type:"2BHK",carpet:680,status:"Sold",    facing:"West", price:6800000,buyer:"Priya Joshi"},
+    {no:"103",type:"2BHK",carpet:695,status:"Booked",  facing:"East", price:6950000,buyer:"Kavita Rao"},
+    {no:"104",type:"3BHK",carpet:980,status:"Available",facing:"North",price:9800000,buyer:""},
+  ]},
+  {floor:2,units:[
+    {no:"201",type:"1BHK",carpet:450,status:"Sold",    facing:"East", price:4550000,buyer:"Suresh Kumar"},
+    {no:"202",type:"2BHK",carpet:680,status:"Available",facing:"West",price:6900000,buyer:""},
+    {no:"203",type:"2BHK",carpet:695,status:"Sold",    facing:"East", price:7000000,buyer:"Deepa Nair"},
+    {no:"204",type:"3BHK",carpet:980,status:"Reserved",facing:"North",price:9850000,buyer:"Arjun Mehta"},
+  ]},
+  {floor:3,units:[
+    {no:"301",type:"1BHK",carpet:450,status:"Available",facing:"East", price:4600000,buyer:""},
+    {no:"302",type:"2BHK",carpet:680,status:"Sold",    facing:"West", price:6950000,buyer:"Vijay Patil"},
+    {no:"303",type:"2BHK",carpet:695,status:"Booked",  facing:"East", price:7050000,buyer:"Sunita Gupta"},
+    {no:"304",type:"3BHK",carpet:980,status:"Available",facing:"North",price:9900000,buyer:""},
+  ]},
+];
+const PO_INIT=[
+  {id:"PO-2024-089",vendor:"TATA Steel",   item:"TMT Bars 16mm — 15 MT",       amount:975000, project:1,status:"Approved", date:"2024-06-10",delivery:"2024-06-18"},
+  {id:"PO-2024-090",vendor:"ACC Ltd",      item:"Cement OPC 53 — 500 bags",    amount:190000, project:2,status:"Pending",  date:"2024-06-12",delivery:"2024-06-16"},
+  {id:"PO-2024-091",vendor:"Kajaria Tiles",item:"Floor Tiles 600mm — 200 boxes",amount:360000,project:5,status:"Delivered",date:"2024-06-08",delivery:"2024-06-14"},
+  {id:"PO-2024-092",vendor:"Ashirvad",     item:"UPVC Pipes 4inch — 500 Rft",  amount:92500,  project:3,status:"Approved", date:"2024-06-13",delivery:"2024-06-20"},
+  {id:"PO-2024-093",vendor:"CenturyPly",   item:"Plywood 12mm BWP — 100 sheets",amount:125000,project:5,status:"Rejected", date:"2024-06-11",delivery:"—"},
+];
+const MEETINGS_INIT=[
+  {id:1,title:"Weekly Site Review — SNJ-001",      type:"Site Meeting",      project:1,date:"2024-06-17",time:"09:00 AM",venue:"Site Office, Kharghar",    attendees:["Rahul Kulkarni","Ankit Patil","Rajesh Kumar"],status:"Scheduled"},
+  {id:2,title:"Structural Consultant Review — 002", type:"Consultant Meeting",project:2,date:"2024-06-18",time:"11:00 AM",venue:"Head Office, CBD Belapur",  attendees:["Kiran Bhosale","Priya Sharma","Arch. Sharma"],status:"Scheduled"},
+  {id:3,title:"Client Handover — SNJ-004",          type:"Client Meeting",   project:4,date:"2024-06-20",time:"03:00 PM",venue:"Project Site, Belapur",     attendees:["Mahesh Pawar","Sunita Patil","Client Team"],status:"Scheduled"},
+  {id:4,title:"Progress Review — SNJ-005",          type:"Management Meeting",project:5,date:"2024-06-22",time:"10:00 AM",venue:"Conference Room, HO",       attendees:["Kiran Bhosale","Pradeep Sawant","Vikram Nair"],status:"Scheduled"},
+  {id:5,title:"Safety Audit — SNJ-006",             type:"Safety Meeting",   project:6,date:"2024-06-19",time:"08:00 AM",venue:"Site Office, Airoli",       attendees:["Rahul Kulkarni","Snehal Desai"],status:"Scheduled"},
+];
+const TASKS_INIT=[
+  {id:1,title:"Submit RCC inspection report — Floor 9 Wing A",project:1,assignee:"ENG-001",due:"2024-06-18",priority:"High",  status:"In Progress"},
+  {id:2,title:"Comparative statement for steel vendors",       project:2,assignee:"ENG-006",due:"2024-06-17",priority:"High",  status:"Pending"},
+  {id:3,title:"Update RERA compliance documents",              project:3,assignee:"ENG-003",due:"2024-06-20",priority:"Medium",status:"In Progress"},
+  {id:4,title:"Follow up with Arjun Mehta — site visit",      project:1,assignee:"ENG-001",due:"2024-06-17",priority:"Low",   status:"Done"},
+  {id:5,title:"Waterproofing quality check — Terrace Wing C",  project:1,assignee:"ENG-002",due:"2024-06-16",priority:"High",  status:"Done"},
+  {id:6,title:"Prepare June MIS report",                       project:null,assignee:"ENG-006",due:"2024-06-25",priority:"Medium",status:"Pending"},
+  {id:7,title:"MEP inspection Floor 8-12",                     project:5,assignee:"ENG-004",due:"2024-06-19",priority:"High",  status:"In Progress"},
+  {id:8,title:"Site layout marking — Phase 2 Wing D",          project:3,assignee:"ENG-008",due:"2024-06-21",priority:"Medium",status:"Pending"},
+];
+const APPROVALS_INIT=[
+  {id:1,type:"Purchase Order",  desc:"Steel 25 MT — SNJ-002",         amount:1625000,from:"PM Priya Sharma",  urgency:"High",  project:2},
+  {id:2,type:"Contractor Bill", desc:"RCC Work Floor 8-10 — SNJ-001", amount:680000, from:"SE Rahul Kulkarni",urgency:"High",  project:1},
+  {id:3,type:"Material Request",desc:"Cement 500 bags — SNJ-005",     amount:190000, from:"SE Ankit Patil",   urgency:"Medium",project:5},
+  {id:4,type:"Leave Request",   desc:"Annual Leave 5 days",            amount:null,   from:"QS Deepika Rane",  urgency:"Low",   project:null},
+  {id:5,type:"Budget Revision", desc:"Electrical works — SNJ-003",    amount:450000, from:"PM Amit Desai",    urgency:"Medium",project:3},
+];
+const NOTIFS_INIT=[
+  {id:1,icon:"⚠️",text:"Low stock: Ceramic Tiles on SNJ-005",      time:"2 min ago", read:false,color:"#F59E0B"},
+  {id:2,icon:"📋",text:"DPR submitted by Rahul Kulkarni (SNJ-001)", time:"18 min ago",read:false,color:"#3B82F6"},
+  {id:3,icon:"💰",text:"Payment received ₹15L — Ramesh Sharma",     time:"1 hr ago",  read:false,color:"#10B981"},
+  {id:4,icon:"🔔",text:"Meeting reminder: Weekly Site Review 9 AM", time:"2 hr ago",  read:true, color:"#8B5CF6"},
+  {id:5,icon:"📦",text:"GRN confirmed: 200 bags cement — ACC Ltd",   time:"3 hr ago",  read:true, color:"#10B981"},
+  {id:6,icon:"⏳",text:"PO-2024-090 pending approval since 2 days",  time:"5 hr ago",  read:true, color:"#EF4444"},
+];
+const NAV=[
+  {section:"Core",items:[{key:"dashboard",icon:"📊",label:"Owner Dashboard"},{key:"assignments",icon:"🔗",label:"Assignments"},{key:"projects",icon:"🏗️",label:"Projects"},{key:"dpr",icon:"📋",label:"Daily Progress Report"}]},
+  {section:"Operations",items:[{key:"labour",icon:"👷",label:"Labour Management"},{key:"material",icon:"📦",label:"Materials & Stock"},{key:"purchase",icon:"🛒",label:"Purchase & PO"},{key:"meetings",icon:"📅",label:"Meeting Schedule"}]},
+  {section:"Commercial",items:[{key:"inventory",icon:"🏢",label:"Flat Inventory"},{key:"sales",icon:"💼",label:"Sales & CRM"},{key:"finance",icon:"💰",label:"Finance"}]},
+  {section:"People",items:[{key:"hr",icon:"👥",label:"HR & Payroll"},{key:"tasks",icon:"📌",label:"Tasks"},{key:"settings",icon:"⚙️",label:"Settings"}]},
+];
+function canAccess(user,pid,asgns){if(!user.engId)return true;return asgns.some(a=>a.engId===user.engId&&a.projectId===pid);}
+function getPerm(user,pid,perm,asgns){if(!user.engId)return true;const a=asgns.find(a=>a.engId===user.engId&&a.projectId===pid);return a?a[perm]===true:false;}
+
+const BC={Running:"#3B82F6",Completed:"#10B981",Planning:"#F59E0B",Delayed:"#EF4444",Available:"#10B981",Sold:"#64748B",Booked:"#3B82F6",Reserved:"#F59E0B",High:"#EF4444",Medium:"#F59E0B",Low:"#10B981",Approved:"#10B981",Pending:"#F59E0B",Delivered:"#3B82F6",Rejected:"#EF4444","In Progress":"#3B82F6",Done:"#10B981",Scheduled:"#3B82F6",Contractor:"#8B5CF6",Direct:"#3B82F6",credit:"#10B981",debit:"#EF4444"};
+function Badge({label,color}){const c=BC[label]||BC[color]||"#94A3B8";return<span style={{background:c+"22",color:c,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:600,whiteSpace:"nowrap",display:"inline-block"}}>{label}</span>;}
+function StatCard({label,value,sub,trend,icon,dark}){const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B";return(<div style={{background:dark?"#1E293B":"#fff",border:`1px solid ${dark?"#334155":"#E2E8F0"}`,borderRadius:12,padding:"1rem 1.25rem"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><span style={{fontSize:12,color:ts,fontWeight:500}}>{label}</span><span style={{fontSize:20,lineHeight:1}}>{icon}</span></div><div style={{fontSize:24,fontWeight:800,color:tp,marginBottom:4}}>{value}</div>{sub&&<div style={{fontSize:12,color:trend==="up"?"#10B981":trend==="down"?"#EF4444":ts}}>{trend==="up"?"▲ ":trend==="down"?"▼ ":""}{sub}</div>}</div>);}
+function Card({children,dark,style={}}){return<div style={{background:dark?"#1E293B":"#fff",border:`1px solid ${dark?"#334155":"#E2E8F0"}`,borderRadius:12,padding:"1.25rem",...style}}>{children}</div>;}
+function ProgressBar({value,max=100,color="#F59E0B",dark}){return<div style={{background:dark?"#334155":"#E2E8F0",borderRadius:4,height:6,overflow:"hidden"}}><div style={{width:`${Math.min(100,Math.round((value/max)*100))}%`,height:"100%",background:color,borderRadius:4,transition:"width 0.4s"}}/></div>;}
+function PageHeader({title,sub,dark,children}){const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B";return(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.5rem",flexWrap:"wrap",gap:12}}><div><h1 style={{fontSize:22,fontWeight:800,color:tp,margin:0}}>{title}</h1><p style={{fontSize:13,color:ts,margin:"2px 0 0"}}>{sub}</p></div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{children}</div></div>);}
+function TabBar({tabs,active,onChange,dark}){return(<div style={{display:"flex",gap:0,background:dark?"#1E293B":"#F1F5F9",borderRadius:10,padding:4,width:"fit-content",marginBottom:"1.25rem",flexWrap:"wrap"}}>{tabs.map(([k,l])=>(<button key={k} onClick={()=>onChange(k)} style={{padding:"7px 14px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:active===k?700:400,background:active===k?(dark?"#0F172A":"#fff"):"transparent",color:active===k?(dark?"#F1F5F9":ACCENT):(dark?"#94A3B8":"#64748B"),transition:"all 0.15s"}}>{l}</button>))}</div>);}
+function Btn({children,onClick,color=ACCENT,outline=false,dark=false,disabled=false}){return<button onClick={onClick} disabled={disabled} style={{background:outline?"transparent":disabled?"#94A3B8":color,color:outline?(dark?"#94A3B8":"#64748B"):"#fff",border:outline?`1px solid ${dark?"#475569":"#E2E8F0"}`:"none",borderRadius:8,padding:"7px 16px",fontSize:13,fontWeight:outline?400:700,cursor:disabled?"not-allowed":"pointer",whiteSpace:"nowrap",opacity:disabled?0.6:1}}>{children}</button>;}
+function Th({children,ts}){return<th style={{padding:"8px 12px",textAlign:"left",color:ts,fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{children}</th>;}
+function Td({children,style={}}){return<td style={{padding:"8px 12px",verticalAlign:"middle",...style}}>{children}</td>;}
+function AccessDenied({dark}){const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B";return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:260,textAlign:"center"}}><div style={{fontSize:48,marginBottom:10}}>🔒</div><div style={{fontSize:17,fontWeight:700,color:tp,marginBottom:6}}>Access Restricted</div><div style={{fontSize:13,color:ts}}>You don't have permission for this section.<br/>Contact your Project Manager to request access.</div></div>);}
+function EngAvatar({eng,size=36,dark}){const colors=["#3B82F6","#10B981","#8B5CF6","#EF4444","#F59E0B","#06B6D4","#EC4899","#84CC16"];const ci=ALL_ENGINEERS.findIndex(e=>e.id===eng?.id)%colors.length;return<div style={{width:size,height:size,borderRadius:"50%",background:colors[ci]||ACCENT,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.35,fontWeight:800,color:"#fff",flexShrink:0,border:`2px solid ${dark?"#334155":"#E2E8F0"}`}}>{eng?.avatar||"?"}</div>;}
+
+function Toast({toast}){
+  if(!toast)return null;
+  const colors={success:"#10B981",error:"#EF4444",info:"#3B82F6",warning:"#F59E0B"};
+  const c=colors[toast.type]||colors.success;
+  return(<div style={{position:"fixed",bottom:24,right:24,background:"#1E293B",border:`2px solid ${c}`,color:"#fff",borderRadius:12,padding:"12px 20px",fontSize:13,fontWeight:600,zIndex:9999,display:"flex",alignItems:"center",gap:10,boxShadow:"0 8px 32px rgba(0,0,0,0.3)",maxWidth:360,animation:"fadeIn 0.2s"}}>
+    <span style={{fontSize:18}}>{toast.type==="success"?"✅":toast.type==="error"?"❌":toast.type==="warning"?"⚠️":"ℹ️"}</span>
+    <span>{toast.msg}</span>
+  </div>);}
+
+function Modal({open,onClose,title,dark,children,width=480}){
+  if(!open)return null;
+  const tp=dark?"#F1F5F9":"#0F172A",bd=dark?"#334155":"#E2E8F0";
+  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200}} onClick={onClose}>
+    <div style={{background:dark?"#1E293B":"#fff",borderRadius:14,padding:"1.5rem",width,maxWidth:"95vw",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 60px rgba(0,0,0,0.35)"}} onClick={e=>e.stopPropagation()}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{fontSize:17,fontWeight:800,color:tp}}>{title}</div>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:dark?"#94A3B8":"#64748B",fontSize:20,lineHeight:1,padding:4}}>✕</button>
+      </div>
+      {children}
+    </div>
+  </div>);}
+
+function NotifDropdown({notifs,setNotifs,dark,onClose}){
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const unread=notifs.filter(n=>!n.read).length;
+  const markAll=()=>setNotifs(prev=>prev.map(n=>({...n,read:true})));
+  return(<div style={{position:"absolute",top:"calc(100% + 8px)",right:0,background:dark?"#1E293B":"#fff",border:`1px solid ${bd}`,borderRadius:12,width:320,maxHeight:400,overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.18)",zIndex:100}} onClick={e=>e.stopPropagation()}>
+    <div style={{padding:"12px 16px",borderBottom:`1px solid ${bd}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{fontSize:14,fontWeight:700,color:tp}}>Notifications {unread>0&&<span style={{background:"#EF4444",color:"#fff",borderRadius:12,padding:"1px 7px",fontSize:11,marginLeft:6}}>{unread}</span>}</div>
+      <button onClick={markAll} style={{background:"none",border:"none",cursor:"pointer",color:ACCENT,fontSize:12,fontWeight:600}}>Mark all read</button>
+    </div>
+    {notifs.map(n=>(
+      <div key={n.id} onClick={()=>setNotifs(prev=>prev.map(x=>x.id===n.id?{...x,read:true}:x))}
+        style={{padding:"10px 16px",borderBottom:`1px solid ${bd}`,display:"flex",gap:10,alignItems:"flex-start",background:n.read?"transparent":(dark?"#0F172A":"#F8FAFC"),cursor:"pointer",transition:"background 0.1s"}}
+       onMouseEnter={e=>e.currentTarget.style.background=dark?"#0F172A":"#F1F5F9"}
+        onMouseLeave={e=>e.currentTarget.style.background=n.read?"transparent":(dark?"#0F172A":"#F8FAFC")}>
+        <span style={{fontSize:18,flexShrink:0}}>{n.icon}</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:12,color:tp,fontWeight:n.read?400:600,lineHeight:1.4}}>{n.text}</div>
+          <div style={{fontSize:10,color:ts,marginTop:3}}>{n.time}</div>
+        </div>
+        {!n.read&&<span style={{width:8,height:8,borderRadius:"50%",background:"#3B82F6",flexShrink:0,marginTop:4}}/>}
+      </div>
+    ))}
+  </div>);}
+
+function SearchResults({query,dark,setMod,onClose}){
+  if(!query||query.length<2)return null;
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const q=query.toLowerCase();
+  const projResults=PROJECTS_INIT.filter(p=>p.name.toLowerCase().includes(q)||p.code.toLowerCase().includes(q)||p.location.toLowerCase().includes(q));
+  const engResults=ALL_ENGINEERS.filter(e=>e.name.toLowerCase().includes(q)||e.role.toLowerCase().includes(q));
+  const matResults=MATERIALS_INIT.filter(m=>m.name.toLowerCase().includes(q)||m.code.toLowerCase().includes(q));
+  const total=projResults.length+engResults.length+matResults.length;
+  if(total===0)return(<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,background:dark?"#1E293B":"#fff",border:`1px solid ${bd}`,borderRadius:10,padding:"12px 16px",width:360,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",zIndex:100,fontSize:13,color:ts}}>No results for "{query}"</div>);
+  return(<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,background:dark?"#1E293B":"#fff",border:`1px solid ${bd}`,borderRadius:10,width:380,maxHeight:400,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.15)",zIndex:100}} onClick={e=>e.stopPropagation()}>
+    {projResults.length>0&&(<div>
+      <div style={{padding:"8px 14px",fontSize:10,fontWeight:700,color:ts,textTransform:"uppercase",letterSpacing:"0.08em"}}>Projects ({projResults.length})</div>
+      {projResults.map(p=>(<div key={p.id} onClick={()=>{setMod("projects");onClose();}} style={{padding:"8px 14px",display:"flex",gap:10,cursor:"pointer",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.background=dark?"#0F172A":"#F8FAFC"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+        <span style={{fontSize:16}}>🏗️</span><div><div style={{fontSize:12,fontWeight:600,color:tp}}>{p.name}</div><div style={{fontSize:11,color:ts}}>{p.code} · {p.location}</div></div>
+        <span style={{marginLeft:"auto",fontSize:11,color:BC[p.status]||ts,fontWeight:600}}>{p.status}</span>
+      </div>))}
+    </div>)}
+    {engResults.length>0&&(<div>
+      <div style={{padding:"8px 14px",fontSize:10,fontWeight:700,color:ts,textTransform:"uppercase",letterSpacing:"0.08em"}}>Engineers ({engResults.length})</div>
+      {engResults.map(e=>(<div key={e.id} onClick={()=>{setMod("assignments");onClose();}} style={{padding:"8px 14px",display:"flex",gap:10,cursor:"pointer",alignItems:"center"}} onMouseEnter={el=>el.currentTarget.style.background=dark?"#0F172A":"#F8FAFC"} onMouseLeave={el=>el.currentTarget.style.background="transparent"}>
+        <EngAvatar eng={e} size={28} dark={dark}/><div><div style={{fontSize:12,fontWeight:600,color:tp}}>{e.name}</div><div style={{fontSize:11,color:ts}}>{e.role}</div></div>
+      </div>))}
+    </div>)}
+    {matResults.length>0&&(<div>
+      <div style={{padding:"8px 14px",fontSize:10,fontWeight:700,color:ts,textTransform:"uppercase",letterSpacing:"0.08em"}}>Materials ({matResults.length})</div>
+      {matResults.map(m=>(<div key={m.id} onClick={()=>{setMod("material");onClose();}} style={{padding:"8px 14px",display:"flex",gap:10,cursor:"pointer",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.background=dark?"#0F172A":"#F8FAFC"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+        <span style={{fontSize:16}}>📦</span><div><div style={{fontSize:12,fontWeight:600,color:tp}}>{m.name}</div><div style={{fontSize:11,color:ts}}>{m.code} · Stock: {m.stock} {m.unit}</div></div>
+      </div>))}
+    </div>)}
+  </div>);}
+
+function OwnerDashboard({dark,visibleProjects,approvals,setApprovals,showToast}){
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",cg=dark?"#334155":"#E2E8F0",ct=dark?"#94A3B8":"#64748B",cb=dark?"#1E293B":"#fff";
+  const tb2=visibleProjects.reduce((a,p)=>a+p.budget,0),sp=visibleProjects.reduce((a,p)=>a+p.spent,0);
+  const tu=visibleProjects.reduce((a,p)=>a+p.units,0),tso=visibleProjects.reduce((a,p)=>a+p.sold,0);
+  const handleApproval=(id,action)=>{
+    const a=approvals.find(x=>x.id===id);
+    setApprovals(prev=>prev.filter(x=>x.id!==id));
+    showToast(`${a.type} ${action==="approve"?"approved":"rejected"} successfully`,action==="approve"?"success":"error");
+  };
+  return(<div style={{display:"flex",flexDirection:"column",gap:"1.5rem"}}>
+    <div style={{background:`linear-gradient(135deg,${SIDEBAR} 0%,#1a3a5c 100%)`,borderRadius:14,padding:"1.25rem 1.5rem",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+      <div><div style={{fontSize:18,fontWeight:800,color:"#fff"}}>Good morning, Rajeev 👋</div><div style={{fontSize:13,color:"rgba(255,255,255,0.6)",marginTop:4}}>Sanjineer ERP · {visibleProjects.length} project{visibleProjects.length!==1?"s":""} in view</div></div>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+        {[{l:"Pending Approvals",v:approvals.length,c:"#EF4444"},{l:"Low Stock Alerts",v:2,c:"#F59E0B"},{l:"Tasks Due Today",v:3,c:"#3B82F6"}].map(s=>(
+          <div key={s.l} style={{background:"rgba(255,255,255,0.08)",borderRadius:10,padding:"10px 14px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginTop:2}}>{s.l}</div></div>
+        ))}
+      </div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:12}}>
+      <StatCard dark={dark} label="Projects in View" value={visibleProjects.length} sub="assigned sites" icon="🏗️"/>
+      <StatCard dark={dark} label="Revenue (YTD)" value="₹28.4Cr" sub="12% above target" trend="up" icon="💰"/>
+      <StatCard dark={dark} label="Units Sold" value={`${tso}/${tu}`} sub={`${tu?Math.round(tso/tu*100):0}% inventory`} icon="🏠"/>
+      <StatCard dark={dark} label="Budget Utilised" value={`${tb2?Math.round(sp/tb2*100):0}%`} sub={`₹${(sp/10000000).toFixed(1)}Cr of ₹${(tb2/10000000).toFixed(0)}Cr`} icon="📊"/>
+      <StatCard dark={dark} label="Active Labour" value="1,284" sub="128 contractors" icon="👷"/>
+      <StatCard dark={dark} label="Net Profit" value="₹8.6Cr" sub="30.3% margin" trend="up" icon="📈"/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16}}>
+      <Card dark={dark}>
+        <div style={{marginBottom:10}}><div style={{fontSize:15,fontWeight:700,color:tp}}>Revenue vs Expenses</div><div style={{fontSize:12,color:ts}}>Monthly — FY 2024-25 (₹ Crore)</div></div>
+        <div style={{height:200}}><ResponsiveContainer width="100%" height="100%"><AreaChart data={MONTHLY_REV} margin={{top:5,right:5,left:-20,bottom:0}}><defs><linearGradient id="gR" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25}/><stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/></linearGradient><linearGradient id="gE" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#EF4444" stopOpacity={0.2}/><stop offset="95%" stopColor="#EF4444" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke={cg}/><XAxis dataKey="m" tick={{fill:ct,fontSize:11}}/><YAxis tick={{fill:ct,fontSize:11}}/><Tooltip contentStyle={{background:cb,border:"none",borderRadius:8,fontSize:12}}/><Legend wrapperStyle={{fontSize:12}}/><Area type="monotone" dataKey="rev" name="Revenue" stroke="#3B82F6" fill="url(#gR)" strokeWidth={2} dot={false}/><Area type="monotone" dataKey="exp" name="Expenses" stroke="#EF4444" fill="url(#gE)" strokeWidth={2} dot={false}/></AreaChart></ResponsiveContainer></div>
+      </Card>
+      <Card dark={dark}>
+        <div style={{fontSize:15,fontWeight:700,color:tp,marginBottom:10}}>Project Progress</div>
+        {visibleProjects.map(p=>{const c=p.status==="Delayed"?"#EF4444":p.progress===100?"#10B981":"#F59E0B";return(<div key={p.id} style={{marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:12,color:tp,fontWeight:500}}>{p.code}</span><span style={{fontSize:12,fontWeight:700,color:c}}>{p.progress}%</span></div><ProgressBar value={p.progress} color={c} dark={dark}/></div>);})}
+      </Card>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      <Card dark={dark}>
+        <div style={{fontSize:15,fontWeight:700,color:tp,marginBottom:10}}>Sales Performance</div>
+        <div style={{height:170}}><ResponsiveContainer width="100%" height="100%"><BarChart data={SALES_DATA} margin={{top:0,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={cg}/><XAxis dataKey="m" tick={{fill:ct,fontSize:11}}/><YAxis tick={{fill:ct,fontSize:11}}/><Tooltip contentStyle={{background:cb,border:"none",borderRadius:8,fontSize:12}}/><Legend wrapperStyle={{fontSize:12}}/><Bar dataKey="booked" name="Bookings" fill="#10B981" radius={[3,3,0,0]}/><Bar dataKey="inq" name="Inquiries" fill="#93C5FD" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer></div>
+      </Card>
+      <Card dark={dark}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div style={{fontSize:15,fontWeight:700,color:tp}}>Pending Approvals</div>
+          <span style={{background:"#EF444422",color:"#EF4444",borderRadius:12,padding:"2px 8px",fontSize:12,fontWeight:700}}>{approvals.length}</span>
+        </div>
+        {approvals.length===0?(<div style={{textAlign:"center",padding:"24px 0",color:"#10B981",fontSize:13,fontWeight:600}}>✅ All approvals cleared!</div>):approvals.filter(a=>!a.project||visibleProjects.some(p=>p.id===a.project)).slice(0,4).map(a=>(
+          <div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:dark?"#0F172A":"#F8FAFC",borderRadius:8,marginBottom:8,gap:8}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:700,color:tp,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.type}</div>
+              <div style={{fontSize:11,color:ts,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.desc}</div>
+              {a.amount&&<div style={{fontSize:11,fontWeight:700,color:tp}}>₹{(a.amount/100000).toFixed(1)}L</div>}
+            </div>
+            <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+              <Badge label={a.urgency}/>
+              <button onClick={()=>handleApproval(a.id,"approve")} style={{background:"#10B981",color:"#fff",border:"none",borderRadius:5,padding:"4px 8px",fontSize:11,cursor:"pointer",fontWeight:600}}>✓ Approve</button>
+              <button onClick={()=>handleApproval(a.id,"reject")} style={{background:"#EF4444",color:"#fff",border:"none",borderRadius:5,padding:"4px 8px",fontSize:11,cursor:"pointer",fontWeight:600}}>✕</button>
+            </div>
+          </div>
+        ))}
+      </Card>
+    </div>
+  </div>);}
+
+function ProjectsList({dark,visibleProjects,currentUser,assignments,showToast,setMod}){
+  const [search,setSearch]=useState("");
+  const [filter,setFilter]=useState("All");
+  const [view,setView]=useState("cards");
+  const [showNewProject,setShowNewProject]=useState(false);
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const inp={padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",boxSizing:"border-box"};
+  const isAdmin=!currentUser.engId;
+  const engsFor=pid=>assignments.filter(a=>a.projectId===pid).map(a=>ALL_ENGINEERS.find(e=>e.id===a.engId)).filter(Boolean);
+  const filtered=visibleProjects.filter(p=>(filter==="All"||p.status===filter)&&(p.name.toLowerCase().includes(search.toLowerCase())||p.code.toLowerCase().includes(search.toLowerCase())));
+  return(<div>
+    <PageHeader title="Projects" sub={isAdmin?`All ${PROJECTS_INIT.length} projects`:`Your ${visibleProjects.length} assigned site${visibleProjects.length!==1?"s":""}`} dark={dark}>
+      <Btn outline dark={dark} onClick={()=>showToast("Exporting projects to Excel…","info")}>📤 Export</Btn>
+      {isAdmin&&<Btn onClick={()=>setShowNewProject(true)}>+ New Project</Btn>}
+    </PageHeader>
+    <div style={{display:"flex",gap:8,marginBottom:"1.25rem",flexWrap:"wrap"}}>
+      <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13}}/>
+      <select value={filter} onChange={e=>setFilter(e.target.value)} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13}}>{["All","Running","Planning","Completed","Delayed"].map(o=><option key={o}>{o}</option>)}</select>
+      <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+        <Btn outline dark={dark} onClick={()=>setView("cards")}>⊞ Cards</Btn>
+        <Btn outline dark={dark} onClick={()=>setView("table")}>≡ Table</Btn>
+      </div>
+    </div>
+    {view==="cards"?(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:16}}>
+      {filtered.map(p=>{
+        const team=engsFor(p.id),myRole=assignments.find(a=>a.engId===currentUser.engId&&a.projectId===p.id)?.role;
+        const c=p.status==="Delayed"?"#EF4444":p.progress===100?"#10B981":"#F59E0B";
+        return(<div key={p.id} style={{background:dark?"#1E293B":"#fff",border:`1px solid ${dark?"#334155":"#E2E8F0"}`,borderRadius:12,padding:"1.25rem",cursor:"pointer",transition:"transform 0.15s,box-shadow 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.1)"}} onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><div><div style={{fontSize:11,color:ACCENT,fontWeight:700,marginBottom:2}}>{p.code}</div><div style={{fontSize:15,fontWeight:800,color:tp}}>{p.name}</div><div style={{fontSize:12,color:ts}}>📍 {p.location}</div>{myRole&&<div style={{fontSize:11,color:"#8B5CF6",fontWeight:600,marginTop:2}}>Role: {myRole}</div>}</div><Badge label={p.status}/></div>
+          <div style={{marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:11,color:ts}}>Progress</span><span style={{fontSize:12,fontWeight:700,color:c}}>{p.progress}%</span></div><ProgressBar value={p.progress} color={c} dark={dark}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>{[["Budget",`₹${(p.budget/10000000).toFixed(1)}Cr`],["Sold",`${p.sold}/${p.units}`],["Target",p.end.slice(0,7)]].map(([l,v])=>(<div key={l} style={{background:dark?"#0F172A":"#F8FAFC",borderRadius:7,padding:"7px 9px"}}><div style={{fontSize:10,color:ts}}>{l}</div><div style={{fontSize:12,fontWeight:700,color:tp}}>{v}</div></div>))}</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between"}}>
+            <div style={{display:"flex"}}>{team.slice(0,4).map((e,i)=><div key={e.id} title={e.name} style={{marginLeft:i>0?-8:0,zIndex:4-i,position:"relative"}}><EngAvatar eng={e} size={24} dark={dark}/></div>)}{team.length>4&&<div style={{width:24,height:24,borderRadius:"50%",background:dark?"#334155":"#E2E8F0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:ts,marginLeft:-8}}>+{team.length-4}</div>}<span style={{fontSize:11,color:ts,marginLeft:8}}>{team.length} engineer{team.length!==1?"s":""}</span></div>
+            <button onClick={()=>setMod("dpr")} style={{background:ACCENT,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>Open Site →</button>
+          </div>
+        </div>);
+      })}
+    </div>):(<Card dark={dark}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["Code","Project","Type","Status","Progress","Budget","Units","Team","Action"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead><tbody>{filtered.map(p=>{const team=engsFor(p.id);return(<tr key={p.id} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}><Td style={{color:ACCENT,fontWeight:700}}>{p.code}</Td><Td style={{color:tp,fontWeight:600}}>{p.name}</Td><Td><Badge label={p.type} color="gray"/></Td><Td><Badge label={p.status}/></Td><Td><div style={{minWidth:80}}><ProgressBar value={p.progress} color={p.status==="Delayed"?"#EF4444":"#F59E0B"} dark={dark}/><span style={{fontSize:10,color:ts}}>{p.progress}%</span></div></Td><Td style={{color:tp}}>₹{(p.budget/10000000).toFixed(1)}Cr</Td><Td style={{color:tp}}>{p.sold}/{p.units}</Td><Td><div style={{display:"flex"}}>{team.slice(0,3).map((e,i)=><div key={e.id} title={e.name} style={{marginLeft:i>0?-6:0}}><EngAvatar eng={e} size={22} dark={dark}/></div>)}{team.length>3&&<div style={{width:22,height:22,borderRadius:"50%",background:dark?"#334155":"#E2E8F0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:ts,marginLeft:-6}}>+{team.length-3}</div>}</div></Td><Td><button onClick={()=>setMod("dpr")} style={{background:ACCENT,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>Open →</button></Td></tr>);})}</tbody></table></div></Card>)}
+    {/* NEW PROJECT MODAL */}
+    <Modal open={showNewProject} onClose={()=>setShowNewProject(false)} title="Create New Project" dark={dark} width={540}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        {[["Project Code","text","SNJ-007"],["Project Name","text",""],["Location","text","Navi Mumbai"],["Type","select",["Residential","Commercial","Mixed Use","Infrastructure"]],["RERA Number","text","P520000XXXXX"],["Project Manager","select",["Rajesh Kumar","Priya Sharma","Amit Desai","Vikram Nair"]],["Start Date","date","2024-07-01"],["End Date","date","2027-06-30"],["Total Budget (₹)","number",""],["Total Units","number",""]].map(([l,t,v])=>(
+          <div key={l}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>{l}</label>
+            {t==="select"?<select style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%"}}>{(v||[]).map(o=><option key={o}>{o}</option>)}</select>:<input type={t} placeholder={v||""} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",boxSizing:"border-box"}}/>}
+          </div>
+        ))}
+      </div>
+      <div style={{marginTop:12}}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>Project Description</label><textarea style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",minHeight:60,resize:"vertical",boxSizing:"border-box",outline:"none"}}/></div>
+      <div style={{display:"flex",gap:8,marginTop:16}}>
+        <Btn onClick={()=>{showToast("New project created successfully!","success");setShowNewProject(false);}}>Create Project</Btn>
+        <Btn outline dark={dark} onClick={()=>setShowNewProject(false)}>Cancel</Btn>
+      </div>
+    </Modal>
+  </div>);}
+
+function DPRModule({dark,visibleProjects,currentUser,assignments,showToast}){
+  const [tab,setTab]=useState("entry");
+  const [selPid,setSelPid]=useState(visibleProjects[0]?.id||1);
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const inp={padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",boxSizing:"border-box"};
+  const proj=PROJECTS_INIT.find(p=>p.id===selPid);
+  const hasDPR=getPerm(currentUser,selPid,"canDPR",assignments);
+  const hasStock=getPerm(currentUser,selPid,"canStock",assignments);
+  const siteLabour=LABOUR.filter(l=>l.project===selPid||!currentUser.engId);
+  return(<div>
+    <PageHeader title="Daily Progress Report" sub={`${proj?.name||"—"} · ${new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}`} dark={dark}>
+      <Btn outline dark={dark} onClick={()=>showToast("DPR emailed to project team","info")}>📧 Email Report</Btn>
+      <Btn outline dark={dark} onClick={()=>showToast("Downloading DPR Excel file…","info")}>📊 Excel</Btn>
+      <Btn onClick={()=>showToast("Generating PDF — please wait…","info")}>📄 Export PDF</Btn>
+    </PageHeader>
+    <div style={{display:"flex",gap:6,marginBottom:"1rem",flexWrap:"wrap"}}>{visibleProjects.map(p=><button key={p.id} onClick={()=>setSelPid(p.id)} style={{padding:"6px 14px",borderRadius:8,border:`2px solid ${selPid===p.id?ACCENT:(dark?"#475569":"#E2E8F0")}`,background:selPid===p.id?(dark?"#1a1200":"#FFFBEB"):"transparent",color:selPid===p.id?ACCENT:(dark?"#94A3B8":"#64748B"),fontSize:12,fontWeight:selPid===p.id?700:400,cursor:"pointer"}}>{p.code}</button>)}</div>
+    <div style={{display:"flex",gap:6,marginBottom:"1.25rem",flexWrap:"wrap"}}>
+      {[["📋 DPR Entry",hasDPR],["📦 Materials",hasStock],["📅 Meetings",getPerm(currentUser,selPid,"canMeeting",assignments)],["🛒 Purchase",getPerm(currentUser,selPid,"canPO",assignments)]].map(([l,has])=>(
+        <span key={l} style={{background:has?"#10B98118":"#EF444418",color:has?"#10B981":"#EF4444",borderRadius:20,padding:"3px 12px",fontSize:11,fontWeight:600}}>{has?"✓":"✗"} {l}</span>
+      ))}
+    </div>
+    <TabBar dark={dark} active={tab} onChange={setTab} tabs={[["entry","📝 Entry"],["labour","👷 Labour"],["materials","📦 Materials"],["work","🔨 Work Done"],["remarks","💬 Remarks"],["reports","📊 Reports"]]}/>
+    {tab==="entry"&&(!hasDPR?<AccessDenied dark={dark}/>:(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      <Card dark={dark}>
+        <div style={{fontSize:14,fontWeight:700,color:tp,marginBottom:14}}>Report Header</div>
+        <div style={{display:"flex",flexDirection:"column",gap:11}}>
+          {[["Project","select",visibleProjects.map(p=>p.name)],["Location","text",proj?.location||""],["Date","date","2024-06-16"],["Engineer","text",currentUser.name],["Weather","select",["Clear / Sunny","Cloudy","Light Rain","Heavy Rain","Foggy"]],["Temperature","text","32°C"]].map(([l,t,v])=>(
+            <div key={l}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>{l}</label>
+              {t==="select"?<select style={inp}>{(v||[]).map(o=><option key={o}>{o}</option>)}</select>:<input type={t} defaultValue={Array.isArray(v)?v[0]:v} style={inp}/>}
+            </div>
+          ))}
+        </div>
+      </Card>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <Card dark={dark}>
+          <div style={{fontSize:14,fontWeight:700,color:tp,marginBottom:10}}>Labour Summary</div>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["Contractor","Trade","Total","Present","Absent"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead><tbody>{(siteLabour.length?siteLabour:LABOUR).map(l=>(<tr key={l.id} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}><Td style={{color:tp,fontSize:11,fontWeight:500}}>{l.name}</Td><Td style={{color:ts,fontSize:11}}>{l.trade}</Td><Td style={{color:tp}}>{l.total}</Td><Td style={{color:"#10B981",fontWeight:700}}>{l.present}</Td><Td style={{color:"#EF4444"}}>{l.total-l.present}</Td></tr>))}</tbody></table>
+        </Card>
+        <Card dark={dark}>
+          <div style={{fontSize:14,fontWeight:700,color:tp,marginBottom:10}}>Machinery</div>
+          {[["Tower Crane TC-5050","1","Operational"],["Concrete Mixer","4","Operational"],["Bar Bending Machine","2","Operational"],["Transit Mixer","3","Working"],["Excavator","1","Maintenance"]].map(([m,q,s],i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${dark?"#334155":"#F1F5F9"}`}}><span style={{fontSize:12,color:tp}}>{m}</span><div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:11,color:ts}}>×{q}</span><Badge label={s} color={s==="Maintenance"?"amber":"green"}/></div></div>
+          ))}
+        </Card>
+      </div>
+    </div>))}
+    {tab==="labour"&&(!hasDPR?<AccessDenied dark={dark}/>:(<Card dark={dark}><div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}><div style={{fontSize:14,fontWeight:700,color:tp}}>Manpower & Wages</div><Btn onClick={()=>showToast("Labour entry added","success")}>+ Add Contractor</Btn></div><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["Contractor","Type","Trade","Total","Present","Absent","Rate","Today Amount"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead><tbody>{(siteLabour.length?siteLabour:LABOUR).map(l=>(<tr key={l.id} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}><Td style={{color:tp,fontWeight:600}}>{l.name}</Td><Td><Badge label={l.type}/></Td><Td style={{color:ts}}>{l.trade}</Td><Td style={{color:tp}}>{l.total}</Td><Td style={{color:"#10B981",fontWeight:700}}>{l.present}</Td><Td style={{color:"#EF4444"}}>{l.total-l.present}</Td><Td style={{color:tp}}>₹{l.wages}</Td><Td style={{color:tp,fontWeight:700}}>₹{(l.present*l.wages).toLocaleString()}</Td></tr>))}</tbody></table></Card>))}
+    {tab==="materials"&&(!hasStock?<AccessDenied dark={dark}/>:(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      {[["✅ Received Today","#10B981",[{m:"Cement OPC 53",q:200,u:"Bags",s:"ACC Ltd"},{m:"TMT Steel 16mm",q:5.2,u:"MT",s:"TATA Steel"},{m:"River Sand",q:500,u:"CFT",s:"Local"}]],["🔴 Consumed Today","#EF4444",[{m:"Cement OPC 53",q:180,u:"Bags",s:"RCC Work"},{m:"TMT Steel",q:3.8,u:"MT",s:"Columns"},{m:"Crushed Stone",q:350,u:"CFT",s:"Concrete"}]]].map(([h,c,rows])=>(
+        <Card dark={dark} key={h}><div style={{fontSize:13,fontWeight:700,color:c,marginBottom:10}}>{h}</div><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["Material","Qty","Unit","Source"].map(hh=><Th key={hh} ts={ts}>{hh}</Th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}><Td style={{color:tp}}>{r.m}</Td><Td style={{color:tp,fontWeight:700}}>{r.q}</Td><Td style={{color:ts}}>{r.u}</Td><Td style={{color:ts}}>{r.s}</Td></tr>)}</tbody></table></Card>
+      ))}
+    </div>))}
+    {tab==="work"&&(!hasDPR?<AccessDenied dark={dark}/>:(<Card dark={dark}><div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}><div style={{fontSize:14,fontWeight:700,color:tp}}>Activity-wise Progress</div><Btn onClick={()=>showToast("Activity entry added","success")}>+ Add Activity</Btn></div><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["Activity","Location","UOM","Planned","Achieved","%","Status"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead><tbody>{[{a:"RCC Column Casting",l:"Floor 9 Wing A",u:"Nos",p:14,c:12},{a:"Brickwork",l:"Floor 8 Wing B",u:"Sqft",p:3000,c:2400},{a:"Waterproofing",l:"Terrace Wing C",u:"Sqft",p:800,c:800},{a:"Tile Fixing",l:"Flat 701-704",u:"Sqft",p:2000,c:1200},{a:"Electrical Conduit",l:"Floor 9-10",u:"Rft",p:600,c:380}].map((w,i)=>{const pct=Math.round(w.c/w.p*100);return(<tr key={i} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}><Td style={{color:tp,fontWeight:600}}>{w.a}</Td><Td style={{color:ts}}>{w.l}</Td><Td style={{color:ts}}>{w.u}</Td><Td style={{color:tp}}>{w.p.toLocaleString()}</Td><Td style={{color:w.c>=w.p?"#10B981":"#F59E0B",fontWeight:700}}>{w.c.toLocaleString()}</Td><Td><div style={{minWidth:60}}><ProgressBar value={pct} color={pct>=100?"#10B981":pct>=70?"#F59E0B":"#EF4444"} dark={dark}/><span style={{fontSize:10,color:ts}}>{pct}%</span></div></Td><Td><Badge label={pct>=100?"Completed":pct>0?"In Progress":"Not Started"} color={pct>=100?"green":pct>0?"blue":"gray"}/></Td></tr>);})}  </tbody></table></Card>))}
+    {tab==="remarks"&&(!hasDPR?<AccessDenied dark={dark}/>:(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>{[["Delay Reasons","#EF4444","Crane unavailable 8–11 AM. 2 columns deferred to tomorrow."],["Safety Observations","#F59E0B","All workers on upper floors wearing helmets and harnesses."],["Quality Notes","#3B82F6","Concrete cube tests taken. Slump within limits (100mm)."],["Tomorrow's Plan","#10B981","1. Complete 2 RCC columns Floor 9\n2. Brickwork Floor 9 Wing B\n3. Plumbing first fix Floor 6"]].map(([h,c,v])=>(<Card dark={dark} key={h}><div style={{fontSize:13,fontWeight:700,color:c,marginBottom:8}}>{h}</div><textarea defaultValue={v} style={{width:"100%",background:dark?"#0F172A":"#F8FAFC",border:`1px solid ${dark?"#475569":"#E2E8F0"}`,borderRadius:8,padding:"10px",color:tp,fontSize:12,resize:"vertical",minHeight:80,outline:"none",lineHeight:1.6,boxSizing:"border-box"}}/></Card>))}</div>))}
+    {tab==="reports"&&(<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+      {["DPR Summary Report","Weekly Progress Report","Monthly Progress Report","Material Consumption","Labour Productivity","Cost vs Budget"].map(r=>(
+        <Card dark={dark} key={r}><div style={{fontSize:13,fontWeight:700,color:tp,marginBottom:6}}>📄 {r}</div><div style={{fontSize:11,color:ts,marginBottom:10}}>Auto-generated from site data</div>
+          <div style={{display:"flex",gap:5}}>{[["📄 PDF","#EF4444"],["📊 Excel","#10B981"],["📧 Email","#3B82F6"]].map(([l,c])=><button key={l} onClick={()=>showToast(`${r} — ${l.replace(/📄|📊|📧/g,"").trim()} download started`,"info")} style={{flex:1,padding:"5px",borderRadius:6,border:`1px solid ${c}`,background:"transparent",color:c,fontSize:11,fontWeight:600,cursor:"pointer"}}>{l}</button>)}</div>
+        </Card>
+      ))}
+    </div>)}
+  </div>);}
+
+function MeetingsModule({dark,visibleProjects,currentUser,assignments,meetings,setMeetings,showToast}){
+  const [tab,setTab]=useState("list");
+  const [showForm,setShowForm]=useState(false);
+  const [viewMOM,setViewMOM]=useState(null);
+  const [form,setForm]=useState({title:"",project:"",type:"Site Meeting",date:"",time:"10:00",venue:"",agenda:""});
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const vPids=new Set(visibleProjects.map(p=>p.id));
+  const myMeetings=meetings.filter(m=>!m.project||vPids.has(m.project));
+  const TC={"Site Meeting":"#3B82F6","Consultant Meeting":"#8B5CF6","Client Meeting":"#10B981","Management Meeting":"#F59E0B","Safety Meeting":"#EF4444"};
+  const inp={padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",boxSizing:"border-box"};
+  const saveMeeting=()=>{
+    if(!form.title||!form.date){showToast("Please fill Title and Date","warning");return;}
+    const projObj=visibleProjects.find(p=>p.code===form.project||p.name===form.project);
+    const newM={id:Date.now(),title:form.title,type:form.type,project:projObj?.id||null,date:form.date,time:form.time,venue:form.venue||"TBD",attendees:[currentUser.name],status:"Scheduled"};
+    setMeetings(prev=>[newM,...prev]);
+    showToast(`Meeting "${form.title}" scheduled successfully`,"success");
+    setShowForm(false);setForm({title:"",project:"",type:"Site Meeting",date:"",time:"10:00",venue:"",agenda:""});
+  };
+  return(<div>
+    <PageHeader title="Meeting Schedule" sub={`${myMeetings.length} meetings across your sites`} dark={dark}>
+      <Btn outline dark={dark} onClick={()=>showToast("Generating MOM report…","info")}>📝 MOM Report</Btn>
+      <Btn onClick={()=>setShowForm(!showForm)}>+ Schedule Meeting</Btn>
+    </PageHeader>
+    {showForm&&(<Card dark={dark} style={{marginBottom:"1.5rem",border:`2px solid ${ACCENT}`}}>
+      <div style={{fontSize:14,fontWeight:700,color:tp,marginBottom:12}}>Schedule New Meeting</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
+        {[["Title","title","text","Weekly Site Review"],["Project","project","select",["(General)",...visibleProjects.map(p=>p.code)]],["Type","type","select",Object.keys(TC)],["Date","date","date",""],["Time","time","time","10:00"],["Venue","venue","text","Site Office"]].map(([l,k,t,v])=>(
+          <div key={l}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>{l}</label>
+            {t==="select"?<select value={form[k]||""} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}>{(v||[]).map(o=><option key={o}>{o}</option>)}</select>:<input type={t} value={form[k]||""} placeholder={v} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/>}
+          </div>
+        ))}
+      </div>
+      <div><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>Agenda</label><textarea value={form.agenda} onChange={e=>setForm(f=>({...f,agenda:e.target.value}))} placeholder="1. Review last week's progress&#10;2. Upcoming activities" style={{...inp,minHeight:56,resize:"vertical",outline:"none"}}/></div>
+      <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={saveMeeting}>💾 Save Meeting</Btn><Btn outline dark={dark} onClick={()=>setShowForm(false)}>Cancel</Btn></div>
+    </Card>)}
+    <TabBar dark={dark} active={tab} onChange={setTab} tabs={[["list","📅 Upcoming"],["calendar","🗓️ Calendar"],["mom","📝 MOM"]]}/>
+    {tab==="list"&&(<div style={{display:"flex",flexDirection:"column",gap:12}}>
+      {myMeetings.length===0&&<Card dark={dark}><div style={{textAlign:"center",padding:"2rem",color:ts}}>No meetings scheduled. Click "+ Schedule Meeting" to add one.</div></Card>}
+      {myMeetings.map(m=>{
+        const proj=PROJECTS_INIT.find(p=>p.id===m.project),c=TC[m.type]||"#3B82F6";
+        const canEdit=getPerm(currentUser,m.project,"canMeeting",assignments);
+        return(<Card dark={dark} key={m.id} style={{borderLeft:`4px solid ${c}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",gap:8,marginBottom:6,flexWrap:"wrap"}}><span style={{background:`${c}20`,color:c,borderRadius:12,padding:"2px 10px",fontSize:11,fontWeight:700}}>{m.type}</span>{proj&&<Badge label={proj.code} color="gray"/>}<Badge label={m.status}/>{canEdit?<span style={{fontSize:11,color:"#10B981",fontWeight:600}}>✓ Can manage</span>:<span style={{fontSize:11,color:"#EF4444",fontWeight:600}}>🔒 View only</span>}</div>
+              <div style={{fontSize:15,fontWeight:700,color:tp,marginBottom:4}}>{m.title}</div>
+              <div style={{display:"flex",gap:14,fontSize:12,color:ts,flexWrap:"wrap"}}><span>📅 {m.date}</span><span>⏰ {m.time}</span><span>📍 {m.venue}</span></div>
+              {m.attendees&&<div style={{marginTop:6,fontSize:11,color:ts}}>{m.attendees.slice(0,4).join(" · ")}{m.attendees.length>4&&` +${m.attendees.length-4} more`}</div>}
+            </div>
+            <div style={{display:"flex",gap:6,flexShrink:0,flexWrap:"wrap"}}>
+              {canEdit&&<Btn onClick={()=>showToast("Meeting updated","success")}>Edit</Btn>}
+              <Btn outline dark={dark} onClick={()=>setViewMOM(m)}>View MOM</Btn>
+              {canEdit&&<Btn color="#10B981" onClick={()=>showToast("MOM created — assign action items","success")}>+ MOM</Btn>}
+            </div>
+          </div>
+        </Card>);
+      })}
+    </div>)}
+    {tab==="calendar"&&(<Card dark={dark}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,marginBottom:8}}>{["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:ts,padding:"6px 0"}}>{d}</div>)}</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}}>
+        {Array.from({length:35},(_,i)=>{const day=i-3,date=day>0&&day<=30?day:null,hasMtg=date&&myMeetings.some(m=>parseInt(m.date.slice(8))===date);
+          return(<div key={i} style={{aspectRatio:"1",borderRadius:8,background:date?(dark?"#0F172A":"#F8FAFC"):"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",padding:"6px 4px",cursor:date?"pointer":"default",border:date===16?`2px solid ${ACCENT}`:"1px solid transparent"}} onClick={()=>date&&showToast(hasMtg?`Meeting on June ${date}`:`No meetings on June ${date}`,"info")}>
+            {date&&<span style={{fontSize:13,fontWeight:date===16?800:400,color:date===16?ACCENT:tp}}>{date}</span>}
+            {hasMtg&&<div style={{width:6,height:6,borderRadius:"50%",background:"#3B82F6",marginTop:2}}/>}
+          </div>);
+        })}
+      </div>
+    </Card>)}
+    {tab==="mom"&&(<Card dark={dark}><div style={{padding:"2rem",textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📝</div><div style={{fontSize:15,fontWeight:700,color:tp}}>Minutes of Meeting</div><div style={{fontSize:13,color:ts,margin:"8px 0 20px",maxWidth:360,marginLeft:"auto",marginRight:"auto"}}>Record MOM, assign action items, set deadlines, and track follow-ups for all meetings.</div><Btn onClick={()=>showToast("MOM editor opened","info")}>+ Create MOM</Btn></div></Card>)}
+    {/* VIEW MOM MODAL */}
+    <Modal open={!!viewMOM} onClose={()=>setViewMOM(null)} title={`MOM — ${viewMOM?.title}`} dark={dark} width={500}>
+      {viewMOM&&(<div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+          {[["Date",viewMOM.date],["Time",viewMOM.time],["Venue",viewMOM.venue],["Type",viewMOM.type]].map(([l,v])=>(<div key={l}><div style={{fontSize:11,color:ts,fontWeight:600,marginBottom:2}}>{l}</div><div style={{fontSize:13,color:tp,fontWeight:500}}>{v||"—"}</div></div>))}
+        </div>
+        <div style={{marginBottom:12}}><div style={{fontSize:12,fontWeight:700,color:ts,marginBottom:6}}>ATTENDEES</div><div style={{fontSize:13,color:tp}}>{viewMOM.attendees?.join(", ")||"—"}</div></div>
+        <div style={{background:dark?"#0F172A":"#F8FAFC",borderRadius:8,padding:"12px",marginBottom:14}}><div style={{fontSize:12,fontWeight:700,color:ts,marginBottom:6}}>MINUTES</div><div style={{fontSize:13,color:tp,lineHeight:1.6}}>No MOM recorded yet. Click "+ MOM" on the meeting card to add minutes.</div></div>
+        <Btn onClick={()=>{showToast("MOM saved","success");setViewMOM(null);}}>Save MOM</Btn>
+      </div>)}
+    </Modal>
+  </div>);}
+
+function Purchase({dark,visibleProjects,currentUser,assignments,poList,setPoList,showToast}){
+  const [tab,setTab]=useState("po");
+  const [showForm,setShowForm]=useState(false);
+  const [showComp,setShowComp]=useState(false);
+  const [viewPO,setViewPO]=useState(null);
+  const [form,setForm]=useState({item:"",qty:"",unit:"Bags",project:"",date:"",cost:"",reason:""});
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const vPids=new Set(visibleProjects.map(p=>p.id));
+  const myPOs=poList.filter(po=>!currentUser.engId||vPids.has(po.project));
+  const inp={padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",boxSizing:"border-box"};
+  const approvePO=(id)=>{setPoList(prev=>prev.map(p=>p.id===id?{...p,status:"Approved"}:p));showToast("Purchase Order approved","success");};
+  const rejectPO=(id)=>{setPoList(prev=>prev.map(p=>p.id===id?{...p,status:"Rejected"}:p));showToast("Purchase Order rejected","error");};
+  const submitReq=()=>{
+    if(!form.item||!form.qty){showToast("Please fill Item and Quantity","warning");return;}
+    const proj=visibleProjects.find(p=>p.code===form.project||p.name===form.project);
+    const newPO={id:`PO-2024-${100+myPOs.length}`,vendor:"Pending Vendor",item:`${form.item} — ${form.qty} ${form.unit}`,amount:parseFloat(form.cost)||0,project:proj?.id||visibleProjects[0]?.id,status:"Pending",date:new Date().toISOString().slice(0,10),delivery:"TBD"};
+    setPoList(prev=>[newPO,...prev]);
+    showToast("Requisition submitted for approval","success");
+    setShowForm(false);setForm({item:"",qty:"",unit:"Bags",project:"",date:"",cost:"",reason:""});
+  };
+  return(<div>
+    <PageHeader title="Purchase & PO" sub="Purchase orders, requisitions, and vendor management" dark={dark}>
+      <Btn outline dark={dark} onClick={()=>setShowComp(true)}>📊 Comparative</Btn>
+      <Btn onClick={()=>setShowForm(!showForm)}>+ New Requisition</Btn>
+    </PageHeader>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:"1.5rem"}}>
+      <StatCard dark={dark} label="Open POs" value={myPOs.filter(p=>p.status==="Approved").length} sub="In progress" icon="📋"/>
+      <StatCard dark={dark} label="Pending Approval" value={myPOs.filter(p=>p.status==="Pending").length} sub="Awaiting review" icon="⏳"/>
+      <StatCard dark={dark} label="Delivered" value={myPOs.filter(p=>p.status==="Delivered").length} sub="This month" icon="✅"/>
+      <StatCard dark={dark} label="Total Value" value={`₹${(myPOs.reduce((a,p)=>a+p.amount,0)/100000).toFixed(1)}L`} sub="All POs" icon="💰"/>
+    </div>
+    {showForm&&(<Card dark={dark} style={{marginBottom:"1.5rem",border:`2px solid ${ACCENT}`}}>
+      <div style={{fontSize:14,fontWeight:700,color:tp,marginBottom:12}}>New Purchase Requisition</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+        {[["Material / Item","item","text","e.g. Cement OPC 53"],["Quantity","qty","number",""],["Unit","unit","select",["Bags","MT","CFT","Nos","Sheets","Rft","Boxes","Litres"]],["Project","project","select",["(Select)",...visibleProjects.map(p=>p.code)]],["Required By","date","date",""],["Est. Cost (₹)","cost","number",""]].map(([l,k,t,v])=>(
+          <div key={l}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>{l}</label>
+            {t==="select"?<select value={form[k]||""} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}>{(v||[]).map(o=><option key={o}>{o}</option>)}</select>:<input type={t} value={form[k]||""} placeholder={v} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/>}
+          </div>
+        ))}
+      </div>
+      <div style={{marginTop:10}}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>Justification / Remarks</label><textarea value={form.reason} onChange={e=>setForm(f=>({...f,reason:e.target.value}))} placeholder="Reason for purchase…" style={{...inp,minHeight:50,resize:"vertical",outline:"none"}}/></div>
+      <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={submitReq}>✅ Submit Requisition</Btn><Btn outline dark={dark} onClick={()=>setShowForm(false)}>Cancel</Btn></div>
+    </Card>)}
+    <TabBar dark={dark} active={tab} onChange={setTab} tabs={[["po","📋 Purchase Orders"],["req","📄 Requisitions"],["vendors","🏭 Vendors"]]}/>
+    {tab==="po"&&(<Card dark={dark}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+      <thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["PO No.","Vendor","Item","Project","Amount","Date","Delivery","Status","Actions"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead>
+      <tbody>{myPOs.map(p=>{
+        const proj=PROJECTS_INIT.find(pr=>pr.id===p.project),canEdit=getPerm(currentUser,p.project,"canPO",assignments);
+        return(<tr key={p.id} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}>
+          <Td style={{color:ACCENT,fontWeight:700}}>{p.id}</Td>
+          <Td style={{color:tp,fontWeight:600}}>{p.vendor}</Td>
+          <Td style={{color:ts,maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.item}</Td>
+          <Td><Badge label={proj?.code||"N/A"} color="gray"/></Td>
+          <Td style={{color:tp,fontWeight:700}}>₹{(p.amount/100000).toFixed(1)}L</Td>
+          <Td style={{color:ts}}>{p.date}</Td>
+          <Td style={{color:ts}}>{p.delivery}</Td>
+          <Td><Badge label={p.status}/></Td>
+          <Td><div style={{display:"flex",gap:4}}>
+            <button onClick={()=>setViewPO(p)} style={{background:"transparent",border:`1px solid ${dark?"#475569":"#E2E8F0"}`,color:tp,borderRadius:6,padding:"3px 9px",fontSize:11,cursor:"pointer"}}>View</button>
+            {canEdit&&p.status==="Pending"&&<button onClick={()=>approvePO(p.id)} style={{background:"#10B981",color:"#fff",border:"none",borderRadius:6,padding:"3px 9px",fontSize:11,cursor:"pointer",fontWeight:600}}>✓ Approve</button>}
+            {canEdit&&p.status==="Pending"&&<button onClick={()=>rejectPO(p.id)} style={{background:"#EF4444",color:"#fff",border:"none",borderRadius:6,padding:"3px 9px",fontSize:11,cursor:"pointer"}}>✕</button>}
+            {!canEdit&&<span style={{fontSize:10,color:ts}}>🔒</span>}
+          </div></Td>
+        </tr>);
+      })}</tbody>
+    </table></div></Card>)}
+    {tab==="req"&&(<Card dark={dark}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}><div style={{fontSize:14,fontWeight:700,color:tp}}>Material Requisitions</div><Btn onClick={()=>setShowForm(true)}>+ New MRN</Btn></div>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["MRN No.","Material","Qty","Project","Raised By","Required By","Status","Action"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead>
+        <tbody>{[{r:"MRN-045",m:"Cement OPC 53",q:"500 bags",p:5,by:"SE Ankit",d:"2024-06-18",s:"Pending"},{r:"MRN-044",m:"TMT Steel 20mm",q:"8 MT",p:2,by:"SE Rahul",d:"2024-06-17",s:"Approved"},{r:"MRN-043",m:"UPVC Pipes 4in",q:"200 Rft",p:1,by:"SE Ankit",d:"2024-06-16",s:"Issued"}].filter(r=>!currentUser.engId||vPids.has(r.p)).map((r,i)=>{
+          const proj=PROJECTS_INIT.find(p=>p.id===r.p),canEdit=getPerm(currentUser,r.p,"canStock",assignments);
+          return(<tr key={i} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}>
+            <Td style={{color:ACCENT,fontWeight:600}}>{r.r}</Td><Td style={{color:tp,fontWeight:600}}>{r.m}</Td><Td style={{color:tp}}>{r.q}</Td>
+            <Td><Badge label={proj?.code||""} color="gray"/></Td><Td style={{color:ts}}>{r.by}</Td><Td style={{color:ts}}>{r.d}</Td>
+            <Td><Badge label={r.s}/></Td>
+            <Td>{canEdit?<button onClick={()=>showToast(r.s==="Pending"?"Requisition approved":"Viewing MRN details","success")} style={{background:r.s==="Pending"?"#10B981":"#3B82F6",color:"#fff",border:"none",borderRadius:6,padding:"3px 9px",fontSize:11,cursor:"pointer",fontWeight:600}}>{r.s==="Pending"?"✓ Approve":"View"}</button>:<span style={{fontSize:11,color:ts}}>🔒 View only</span>}</Td>
+          </tr>);
+        })}</tbody>
+      </table>
+    </Card>)}
+    {tab==="vendors"&&(<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:14}}>
+      {[{n:"TATA Steel Ltd",c:"Steel",r:4.8,o:24,v:"₹2.4Cr",ph:"+91-22-6666 0001"},{n:"ACC Limited",c:"Cement",r:4.6,o:38,v:"₹1.1Cr",ph:"+91-22-6666 0002"},{n:"Kajaria Ceramics",c:"Tiles",r:4.3,o:12,v:"₹48L",ph:"+91-22-6666 0003"},{n:"CenturyPly",c:"Plywood",r:4.1,o:8,v:"₹32L",ph:"+91-22-6666 0004"},{n:"Ashirvad Pipes",c:"Plumbing",r:4.5,o:16,v:"₹28L",ph:"+91-22-6666 0005"}].map(v=>(
+        <Card dark={dark} key={v.n}>
+          <div style={{fontSize:14,fontWeight:700,color:tp,marginBottom:4}}>{v.n}</div><div style={{fontSize:12,color:ts,marginBottom:8}}>{v.c}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,textAlign:"center",marginBottom:10}}>{[["Rating",`⭐${v.r}`],["Orders",v.o],["Value",v.v]].map(([l,val])=>(<div key={l} style={{background:dark?"#0F172A":"#F8FAFC",borderRadius:7,padding:"6px"}}><div style={{fontSize:13,fontWeight:700,color:tp}}>{val}</div><div style={{fontSize:10,color:ts}}>{l}</div></div>))}</div>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={()=>window.open(`tel:${v.ph}`)} style={{flex:1,padding:"5px",borderRadius:6,border:"1px solid #10B981",background:"transparent",color:"#10B981",fontSize:11,fontWeight:600,cursor:"pointer"}}>📞 Call</button>
+            <button onClick={()=>showToast(`RFQ sent to ${v.n}`,"success")} style={{flex:1,padding:"5px",borderRadius:6,border:"1px solid #3B82F6",background:"transparent",color:"#3B82F6",fontSize:11,fontWeight:600,cursor:"pointer"}}>📨 RFQ</button>
+          </div>
+        </Card>
+      ))}
+    </div>)}
+    {/* PO DETAIL MODAL */}
+    <Modal open={!!viewPO} onClose={()=>setViewPO(null)} title={`Purchase Order — ${viewPO?.id}`} dark={dark} width={480}>
+      {viewPO&&(<div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+          {[["Vendor",viewPO.vendor],["Item",viewPO.item],["Amount",`₹${(viewPO.amount/100000).toFixed(2)}L`],["Status",viewPO.status],["PO Date",viewPO.date],["Delivery",viewPO.delivery]].map(([l,v])=>(<div key={l}><div style={{fontSize:11,color:ts,fontWeight:600,marginBottom:2}}>{l}</div><div style={{fontSize:13,color:tp,fontWeight:500}}>{l==="Status"?<Badge label={v}/>:v}</div></div>))}
+        </div>
+        <div style={{background:dark?"#0F172A":"#F8FAFC",borderRadius:8,padding:12,marginBottom:14}}><div style={{fontSize:11,color:ts,fontWeight:600,marginBottom:4}}>TERMS & CONDITIONS</div><div style={{fontSize:12,color:tp,lineHeight:1.6}}>Payment: 30 days from delivery · GST: 18% · Inspection required before GRN · Material must conform to IS standards.</div></div>
+        <div style={{display:"flex",gap:8}}>
+          <Btn onClick={()=>{showToast("PO sent to vendor via email","info");setViewPO(null);}}>📧 Send to Vendor</Btn>
+          <Btn outline dark={dark} onClick={()=>{showToast("PO PDF downloaded","info");setViewPO(null);}}>📄 Download PDF</Btn>
+        </div>
+      </div>)}
+    </Modal>
+    {/* COMPARATIVE MODAL */}
+    <Modal open={showComp} onClose={()=>setShowComp(false)} title="Comparative Statement — Cement OPC 53" dark={dark} width={540}>
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["Vendor","Rate/Bag","Lead Time","Min. Qty","Rating","Action"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead>
+          <tbody>{[{v:"ACC Ltd",r:375,lt:"2 days",min:100,rt:4.6,best:true},{v:"UltraTech",r:382,lt:"1 day",min:50,rt:4.8,best:false},{v:"Ambuja",r:368,lt:"3 days",min:200,rt:4.4,best:false},{v:"JK Cement",r:390,lt:"2 days",min:100,rt:4.2,best:false}].map((row,i)=>(
+            <tr key={i} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`,background:row.best?(dark?"#0E2318":"#F0FDF4"):""}}>
+              <Td style={{color:tp,fontWeight:row.best?700:400}}>{row.v}{row.best&&<span style={{background:"#10B98122",color:"#10B981",borderRadius:10,padding:"1px 7px",fontSize:10,marginLeft:6,fontWeight:700}}>L1</span>}</Td>
+              <Td style={{color:tp,fontWeight:700}}>₹{row.r}</Td>
+              <Td style={{color:ts}}>{row.lt}</Td>
+              <Td style={{color:ts}}>{row.min} bags</Td>
+              <Td style={{color:"#F59E0B",fontWeight:600}}>⭐ {row.rt}</Td>
+              <Td><button onClick={()=>{showToast(`PO created for ${row.v}`,"success");setShowComp(false);}} style={{background:row.best?ACCENT:"transparent",color:row.best?"#fff":tp,border:`1px solid ${row.best?ACCENT:(dark?"#475569":"#E2E8F0")}`,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:600}}>Select</button></Td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </Modal>
+  </div>);}
+
+function Materials({dark,visibleProjects,currentUser,assignments,materials,setMaterials,showToast,setMod}){
+  const [tab,setTab]=useState("stock");
+  const [search,setSearch]=useState("");
+  const [showGRN,setShowGRN]=useState(false);
+  const [showIssue,setShowIssue]=useState(false);
+  const [showAdd,setShowAdd]=useState(false);
+  const [viewMat,setViewMat]=useState(null);
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const vPids=new Set(visibleProjects.map(p=>p.id));
+  const myMats=materials.filter(m=>!currentUser.engId||vPids.has(m.project));
+  const filtered=myMats.filter(m=>m.name.toLowerCase().includes(search.toLowerCase())||m.code.toLowerCase().includes(search.toLowerCase()));
+  const lowStock=myMats.filter(m=>m.stock<=m.min*1.3).length;
+  const inp={padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",boxSizing:"border-box"};
+  const [grnForm,setGrnForm]=useState({material:"",qty:"",supplier:"",project:"",invoice:""});
+  const [issueForm,setIssueForm]=useState({material:"",qty:"",project:"",activity:""});
+  const [addForm,setAddForm]=useState({code:"",name:"",cat:"Binding",unit:"Bags",min:"",rate:"",supplier:"",project:""});
+  const submitGRN=()=>{
+    if(!grnForm.material||!grnForm.qty){showToast("Fill Material and Quantity","warning");return;}
+    setMaterials(prev=>prev.map(m=>m.name===grnForm.material?{...m,stock:m.stock+parseFloat(grnForm.qty||0)}:m));
+    showToast(`GRN recorded — ${grnForm.qty} units of ${grnForm.material}`,"success");
+    setShowGRN(false);setGrnForm({material:"",qty:"",supplier:"",project:"",invoice:""});
+  };
+  const submitIssue=()=>{
+    if(!issueForm.material||!issueForm.qty){showToast("Fill Material and Quantity","warning");return;}
+    setMaterials(prev=>prev.map(m=>m.name===issueForm.material?{...m,stock:Math.max(0,m.stock-parseFloat(issueForm.qty||0))}:m));
+    showToast(`${issueForm.qty} units of ${issueForm.material} issued to site`,"success");
+    setShowIssue(false);setIssueForm({material:"",qty:"",project:"",activity:""});
+  };
+  const submitAdd=()=>{
+    if(!addForm.name||!addForm.code){showToast("Fill Code and Name","warning");return;}
+    const proj=visibleProjects.find(p=>p.code===addForm.project);
+    setMaterials(prev=>[...prev,{id:Date.now(),code:addForm.code,name:addForm.name,cat:addForm.cat,unit:addForm.unit,stock:0,min:parseFloat(addForm.min)||0,rate:parseFloat(addForm.rate)||0,value:0,supplier:addForm.supplier,project:proj?.id||visibleProjects[0]?.id}]);
+    showToast(`Material "${addForm.name}" added to inventory`,"success");
+    setShowAdd(false);setAddForm({code:"",name:"",cat:"Binding",unit:"Bags",min:"",rate:"",supplier:"",project:""});
+  };
+  return(<div>
+    <PageHeader title="Materials & Stock" sub={`${myMats.length} materials · ${visibleProjects.length} site${visibleProjects.length!==1?"s":""}`} dark={dark}>
+      <Btn outline dark={dark} onClick={()=>setShowGRN(true)}>📥 GRN Entry</Btn>
+      <Btn outline dark={dark} onClick={()=>setShowIssue(true)}>📤 Issue Stock</Btn>
+      <Btn onClick={()=>setShowAdd(true)}>+ Add Material</Btn>
+    </PageHeader>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:"1.5rem"}}>
+      <StatCard dark={dark} label="My Materials" value={myMats.length} sub="assigned sites" icon="📦"/>
+      <StatCard dark={dark} label="Inventory Value" value={`₹${(myMats.reduce((a,m)=>a+m.value,0)/100000).toFixed(1)}L`} sub="current stock" icon="💎"/>
+      <StatCard dark={dark} label="Low Stock Alerts" value={lowStock} sub="need reorder" trend={lowStock>0?"down":undefined} icon="⚠️"/>
+      <StatCard dark={dark} label="Pending GRNs" value="4" sub="awaiting receipt" icon="🚚"/>
+    </div>
+    <TabBar dark={dark} active={tab} onChange={setTab} tabs={[["stock","📦 Stock Register"],["movement","↕️ Movement"],["alerts","⚠️ Low Stock"]]}/>
+    {tab==="stock"&&(<Card dark={dark}>
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+        <input placeholder="Search materials…" value={search} onChange={e=>setSearch(e.target.value)} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13}}/>
+        <select style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13}}><option>All Categories</option>{["Binding","Structural","Aggregate","Masonry","Shuttering","Plumbing","Finishing"].map(c=><option key={c}>{c}</option>)}</select>
+      </div>
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["Code","Material","Cat","Unit","Stock","Min","Rate","Value","Project","Status","Action"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead>
+          <tbody>{filtered.map(m=>{
+            const low=m.stock<=m.min*1.3,proj=PROJECTS_INIT.find(p=>p.id===m.project),canEdit=getPerm(currentUser,m.project,"canStock",assignments);
+            return(<tr key={m.id} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`,background:low?(dark?"#1a0a0a":"#FFF5F5"):""}}>
+              <Td style={{color:ACCENT,fontWeight:700}}>{m.code}</Td>
+              <Td style={{color:tp,fontWeight:600}}>{m.name}</Td>
+              <Td><Badge label={m.cat} color="gray"/></Td>
+              <Td style={{color:ts}}>{m.unit}</Td>
+              <Td style={{color:low?"#EF4444":tp,fontWeight:low?800:400}}>{typeof m.stock==="number"?m.stock.toLocaleString():m.stock}</Td>
+              <Td style={{color:ts}}>{m.min.toLocaleString()}</Td>
+              <Td style={{color:tp}}>₹{m.rate.toLocaleString()}</Td>
+              <Td style={{color:tp,fontWeight:700}}>₹{(m.value/100000).toFixed(1)}L</Td>
+              <Td><Badge label={proj?.code||"N/A"} color="gray"/></Td>
+              <Td><Badge label={low?"Low Stock":"Normal"} color={low?"red":"green"}/></Td>
+              <Td><div style={{display:"flex",gap:4}}>
+                <button onClick={()=>setViewMat(m)} style={{background:"transparent",border:`1px solid ${dark?"#475569":"#E2E8F0"}`,color:tp,borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer"}}>View</button>
+                {canEdit&&low&&<button onClick={()=>{setMod("purchase");showToast(`Reorder requisition opened for ${m.name}`,"info");}} style={{background:"#EF4444",color:"#fff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,cursor:"pointer",fontWeight:600}}>Reorder</button>}
+                {!canEdit&&<span style={{fontSize:10,color:ts}}>🔒</span>}
+              </div></Td>
+            </tr>);
+          })}</tbody>
+        </table>
+      </div>
+    </Card>)}
+    {tab==="alerts"&&(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+      {myMats.filter(m=>m.stock<=m.min*1.3).map(m=>{
+        const proj=PROJECTS_INIT.find(p=>p.id===m.project),canReorder=getPerm(currentUser,m.project,"canStock",assignments);
+        return(<Card dark={dark} key={m.id} style={{borderLeft:"4px solid #EF4444"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <div><div style={{fontSize:14,fontWeight:700,color:tp}}>{m.name}</div><div style={{fontSize:12,color:ts}}>Stock: <b style={{color:"#EF4444"}}>{m.stock} {m.unit}</b> · Min required: <b>{m.min} {m.unit}</b> · {proj?.code}</div></div>
+            <div style={{display:"flex",gap:8}}>
+              {canReorder?(<><button onClick={()=>setShowGRN(true)} style={{background:"#10B981",color:"#fff",border:"none",borderRadius:7,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:600}}>📥 GRN Entry</button><button onClick={()=>{setMod("purchase");showToast(`Reorder PO initiated for ${m.name}`,"info");}} style={{background:"#EF4444",color:"#fff",border:"none",borderRadius:7,padding:"6px 14px",fontSize:12,cursor:"pointer",fontWeight:600}}>🛒 Raise PO</button></>):<span style={{fontSize:12,color:ts,fontStyle:"italic"}}>🔒 Contact PM to reorder</span>}
+            </div>
+          </div>
+        </Card>);
+      })}
+      {myMats.filter(m=>m.stock<=m.min*1.3).length===0&&<Card dark={dark}><div style={{textAlign:"center",padding:"2rem",color:"#10B981",fontSize:14,fontWeight:600}}>✅ All materials adequately stocked on your sites.</div></Card>}
+    </div>)}
+    {tab==="movement"&&(<Card dark={dark}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}><div style={{fontSize:14,fontWeight:700,color:tp}}>Movement Log</div><div style={{display:"flex",gap:6}}><button onClick={()=>setShowGRN(true)} style={{background:"#10B981",color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:12,cursor:"pointer",fontWeight:600}}>📥 GRN</button><button onClick={()=>setShowIssue(true)} style={{background:"#EF4444",color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:12,cursor:"pointer",fontWeight:600}}>📤 Issue</button></div></div>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["Date","Material","Type","Qty","Unit","Source/Dest","Project","Ref"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead>
+        <tbody>{[{d:"2024-06-16",m:"Cement OPC 53",t:"Received",q:200,u:"Bags",ft:"ACC Ltd → Store",p:1,r:"GRN-089"},{d:"2024-06-16",m:"TMT Steel 16mm",t:"Issued",q:3.8,u:"MT",ft:"Store → Site",p:1,r:"MIR-112"},{d:"2024-06-15",m:"Crushed Stone",t:"Received",q:500,u:"CFT",ft:"Quarry → Store",p:2,r:"GRN-088"},{d:"2024-06-14",m:"Plywood 12mm",t:"Transferred",q:40,u:"Sheets",ft:"SNJ-001 → SNJ-002",p:1,r:"MTR-023"}].filter(r=>!currentUser.engId||vPids.has(r.p)).map((r,i)=>{
+          const proj=PROJECTS_INIT.find(p=>p.id===r.p);
+          return(<tr key={i} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}>
+            <Td style={{color:ts}}>{r.d}</Td><Td style={{color:tp,fontWeight:600}}>{r.m}</Td>
+            <Td><Badge label={r.t} color={r.t==="Received"?"green":r.t==="Issued"?"red":"blue"}/></Td>
+            <Td style={{color:tp,fontWeight:700}}>{r.q}</Td><Td style={{color:ts}}>{r.u}</Td><Td style={{color:ts}}>{r.ft}</Td>
+            <Td><Badge label={proj?.code||""} color="gray"/></Td><Td style={{color:ACCENT,fontWeight:600}}>{r.r}</Td>
+          </tr>);
+        })}</tbody>
+      </table>
+    </Card>)}
+    {/* GRN MODAL */}
+    <Modal open={showGRN} onClose={()=>setShowGRN(false)} title="📥 GRN — Goods Receipt Note" dark={dark} width={460}>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {[["Material","material","select",myMats.map(m=>m.name)],["Quantity Received","qty","number",""],["Unit","unit","select",["Bags","MT","CFT","Nos","Sheets","Rft","Boxes"]],["Supplier","supplier","text",""],["Project","project","select",visibleProjects.map(p=>p.code)],["Invoice / DC No.","invoice","text",""]].map(([l,k,t,v])=>(
+          <div key={l}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>{l}</label>
+            {t==="select"?<select value={grnForm[k]||""} onChange={e=>setGrnForm(f=>({...f,[k]:e.target.value}))} style={inp}>{(v||[]).map(o=><option key={o}>{o}</option>)}</select>:<input type={t} value={grnForm[k]||""} onChange={e=>setGrnForm(f=>({...f,[k]:e.target.value}))} style={inp}/>}
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:16}}><Btn onClick={submitGRN}>✅ Submit GRN</Btn><Btn outline dark={dark} onClick={()=>setShowGRN(false)}>Cancel</Btn></div>
+    </Modal>
+    {/* ISSUE STOCK MODAL */}
+    <Modal open={showIssue} onClose={()=>setShowIssue(false)} title="📤 Issue Stock to Site" dark={dark} width={420}>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {[["Material","material","select",myMats.map(m=>m.name)],["Quantity to Issue","qty","number",""],["Project","project","select",visibleProjects.map(p=>p.code)],["Activity / Purpose","activity","text","e.g. RCC Work Floor 9"]].map(([l,k,t,v])=>(
+          <div key={l}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>{l}</label>
+            {t==="select"?<select value={issueForm[k]||""} onChange={e=>setIssueForm(f=>({...f,[k]:e.target.value}))} style={inp}>{(v||[]).map(o=><option key={o}>{o}</option>)}</select>:<input type={t} value={issueForm[k]||""} placeholder={v} onChange={e=>setIssueForm(f=>({...f,[k]:e.target.value}))} style={inp}/>}
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:16}}><Btn onClick={submitIssue}>📤 Issue Stock</Btn><Btn outline dark={dark} onClick={()=>setShowIssue(false)}>Cancel</Btn></div>
+    </Modal>
+    {/* ADD MATERIAL MODAL */}
+    <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="+ Add New Material" dark={dark} width={480}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        {[["Material Code","code","text","MAT-009"],["Material Name","name","text",""],["Category","cat","select",["Binding","Structural","Aggregate","Masonry","Shuttering","Plumbing","Finishing","Safety"]],["Unit","unit","select",["Bags","MT","CFT","Nos","Sheets","Rft","Boxes","Litres","Kgs"]],["Min. Stock Level","min","number",""],["Rate per Unit (₹)","rate","number",""],["Supplier","supplier","text",""],["Project","project","select",["(Select)",...visibleProjects.map(p=>p.code)]]].map(([l,k,t,v])=>(
+          <div key={l}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>{l}</label>
+            {t==="select"?<select value={addForm[k]||""} onChange={e=>setAddForm(f=>({...f,[k]:e.target.value}))} style={inp}>{(v||[]).map(o=><option key={o}>{o}</option>)}</select>:<input type={t} value={addForm[k]||""} placeholder={v} onChange={e=>setAddForm(f=>({...f,[k]:e.target.value}))} style={inp}/>}
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:16}}><Btn onClick={submitAdd}>✅ Add Material</Btn><Btn outline dark={dark} onClick={()=>setShowAdd(false)}>Cancel</Btn></div>
+    </Modal>
+    {/* VIEW MATERIAL MODAL */}
+    <Modal open={!!viewMat} onClose={()=>setViewMat(null)} title={`Material — ${viewMat?.name}`} dark={dark} width={420}>
+      {viewMat&&(<div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+          {[["Code",viewMat.code],["Category",viewMat.cat],["Unit",viewMat.unit],["Current Stock",`${viewMat.stock} ${viewMat.unit}`],["Minimum Stock",`${viewMat.min} ${viewMat.unit}`],["Rate",`₹${viewMat.rate.toLocaleString()}`],["Inventory Value",`₹${(viewMat.value/100000).toFixed(1)}L`],["Supplier",viewMat.supplier]].map(([l,v])=>(<div key={l}><div style={{fontSize:11,color:ts,fontWeight:600,marginBottom:2}}>{l}</div><div style={{fontSize:13,color:tp,fontWeight:500}}>{v}</div></div>))}
+        </div>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:11,color:ts,fontWeight:600,marginBottom:6}}>STOCK LEVEL</div>
+          <ProgressBar value={viewMat.stock} max={Math.max(viewMat.min*2,viewMat.stock)} color={viewMat.stock<=viewMat.min*1.3?"#EF4444":"#10B981"} dark={dark}/>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:4,fontSize:11,color:ts}}><span>Current: {viewMat.stock}</span><span>Min: {viewMat.min}</span></div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <Btn onClick={()=>{setShowGRN(true);setViewMat(null);}}>📥 GRN Entry</Btn>
+          <Btn color="#EF4444" onClick={()=>{setShowIssue(true);setViewMat(null);}}>📤 Issue</Btn>
+        </div>
+      </div>)}
+    </Modal>
+  </div>);}
+
+function Tasks({dark,visibleProjects,currentUser,tasks,setTasks,showToast}){
+  const [filter,setFilter]=useState("All");
+  const [showAdd,setShowAdd]=useState(false);
+  const [form,setForm]=useState({title:"",project:"",assignee:"",due:"",priority:"Medium"});
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const vPids=new Set(visibleProjects.map(p=>p.id));
+  const inp={padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",boxSizing:"border-box"};
+  const myTasks=tasks.filter(t=>!t.project||!currentUser.engId||vPids.has(t.project));
+  const filtered=myTasks.filter(t=>filter==="All"||t.status===filter);
+  const SC={"Pending":"#F59E0B","In Progress":"#3B82F6","Done":"#10B981"};
+  const markDone=(id)=>{setTasks(prev=>prev.map(t=>t.id===id?{...t,status:"Done"}:t));showToast("Task marked as done ✓","success");};
+  const addTask=()=>{
+    if(!form.title){showToast("Please enter a task title","warning");return;}
+    const proj=visibleProjects.find(p=>p.code===form.project);
+    setTasks(prev=>[...prev,{id:Date.now(),title:form.title,project:proj?.id||null,assignee:form.assignee||currentUser.engId||"ENG-001",due:form.due||"TBD",priority:form.priority,status:"Pending"}]);
+    showToast("Task created successfully","success");
+    setShowAdd(false);setForm({title:"",project:"",assignee:"",due:"",priority:"Medium"});
+  };
+  return(<div>
+    <PageHeader title="Tasks" sub={`${myTasks.length} tasks across your sites`} dark={dark}>
+      <select value={filter} onChange={e=>setFilter(e.target.value)} style={{padding:"7px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13}}>{["All","Pending","In Progress","Done"].map(o=><option key={o}>{o}</option>)}</select>
+      <Btn onClick={()=>setShowAdd(true)}>+ New Task</Btn>
+    </PageHeader>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:"1.5rem"}}>
+      {Object.entries(SC).map(([s,c])=>(<div key={s} style={{background:dark?"#1E293B":"#fff",border:`2px solid ${c}30`,borderRadius:10,padding:"12px 18px",display:"flex",alignItems:"center",gap:12}}><span style={{fontSize:28,fontWeight:800,color:c}}>{myTasks.filter(t=>t.status===s).length}</span><span style={{fontSize:13,color:ts}}>{s}</span></div>))}
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      {filtered.length===0&&<Card dark={dark}><div style={{textAlign:"center",padding:"2rem",color:ts}}>No {filter==="All"?"":filter.toLowerCase()} tasks. {filter==="All"?"Click \"+ New Task\" to create one.":""}</div></Card>}
+      {filtered.map(t=>{
+        const eng=ALL_ENGINEERS.find(e=>e.id===t.assignee),proj=PROJECTS_INIT.find(p=>p.id===t.project),c=SC[t.status]||"#94A3B8";
+        return(<Card dark={dark} key={t.id} style={{padding:"1rem 1.25rem",borderLeft:`4px solid ${c}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><span style={{width:8,height:8,borderRadius:"50%",background:c,display:"inline-block",flexShrink:0}}/><span style={{fontSize:14,fontWeight:700,color:tp}}>{t.title}</span></div>
+              <div style={{display:"flex",gap:12,fontSize:12,color:ts,flexWrap:"wrap",paddingLeft:16}}>
+                {proj&&<span>📁 {proj.code}</span>}
+                {eng&&<div style={{display:"flex",alignItems:"center",gap:5}}><EngAvatar eng={eng} size={16} dark={dark}/><span>{eng.name}</span></div>}
+                <span>📅 Due: {t.due}</span>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+              <Badge label={t.priority}/><Badge label={t.status}/>
+              {t.status!=="Done"&&<button onClick={()=>markDone(t.id)} style={{background:"#10B981",color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:600}}>✓ Done</button>}
+              {t.status==="Done"&&<span style={{fontSize:12,color:"#10B981",fontWeight:600}}>✅ Completed</span>}
+            </div>
+          </div>
+        </Card>);
+      })}
+    </div>
+    <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="+ New Task" dark={dark} width={460}>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {[["Task Title","title","text","e.g. Submit inspection report"],["Project","project","select",["(General)",...visibleProjects.map(p=>p.code)]],["Assign To","assignee","select",ALL_ENGINEERS.map(e=>e.name)],["Due Date","due","date",""],["Priority","priority","select",["High","Medium","Low"]]].map(([l,k,t,v])=>(
+          <div key={l}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>{l}</label>
+            {t==="select"?<select value={form[k]||""} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}>{(v||[]).map(o=><option key={o}>{o}</option>)}</select>:<input type={t} value={form[k]||""} placeholder={v} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={inp}/>}
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:16}}><Btn onClick={addTask}>✅ Create Task</Btn><Btn outline dark={dark} onClick={()=>setShowAdd(false)}>Cancel</Btn></div>
+    </Modal>
+  </div>);}
+
+function FlatInventory({dark,showToast}){
+  const [view,setView]=useState("floor");
+  const [flats,setFlats]=useState(FLATS_INIT);
+  const [bookModal,setBookModal]=useState(null);
+  const [bookForm,setBookForm]=useState({name:"",phone:"",email:"",amount:""});
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const SC={Available:"#10B981",Sold:"#64748B",Booked:"#3B82F6",Reserved:"#F59E0B"};
+  const allUnits=flats.flatMap(f=>f.units);
+  const counts=allUnits.reduce((a,u)=>{a[u.status]=(a[u.status]||0)+1;return a;},{});
+  const inp={padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",boxSizing:"border-box"};
+  const confirmBooking=()=>{
+    if(!bookForm.name||!bookForm.phone){showToast("Please fill Name and Phone","warning");return;}
+    setFlats(prev=>prev.map(floor=>({...floor,units:floor.units.map(u=>u.no===bookModal.no?{...u,status:"Booked",buyer:bookForm.name}:u)})));
+    showToast(`Flat ${bookModal.no} booked for ${bookForm.name}!`,"success");
+    setBookModal(null);setBookForm({name:"",phone:"",email:"",amount:""});
+  };
+  return(<div>
+    <PageHeader title="Flat Inventory" sub="Sanjineer Heights — Wing A" dark={dark}>
+      <Btn outline dark={dark} onClick={()=>showToast("Sales report downloaded","info")}>📊 Sales Report</Btn>
+      <Btn onClick={()=>showToast("Select an available flat to book","info")}>+ Book Unit</Btn>
+    </PageHeader>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:"1.5rem"}}>
+      {Object.entries(SC).map(([s,c])=>(<div key={s} style={{background:dark?"#1E293B":"#fff",border:`2px solid ${c}30`,borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}><div style={{width:40,height:40,borderRadius:9,background:`${c}18`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{width:16,height:16,borderRadius:3,background:c,display:"inline-block"}}/></div><div><div style={{fontSize:26,fontWeight:800,color:c}}>{counts[s]||0}</div><div style={{fontSize:12,color:ts}}>{s}</div></div></div>))}
+    </div>
+    <div style={{display:"flex",gap:8,marginBottom:"1.25rem"}}>{[["floor","🏠 Floor Plan"],["list","📋 List"]].map(([v,l])=>(<button key={v} onClick={()=>setView(v)} style={{padding:"8px 16px",borderRadius:8,border:`2px solid ${view===v?ACCENT:(dark?"#475569":"#E2E8F0")}`,background:view===v?(dark?"#1E293B":"#FFFBEB"):"transparent",color:view===v?ACCENT:(dark?"#94A3B8":"#64748B"),fontSize:13,fontWeight:view===v?700:400,cursor:"pointer"}}>{l}</button>))}</div>
+    {view==="floor"?(<Card dark={dark}>
+      {flats.map(f=>(<div key={f.floor} style={{marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:700,color:ts,marginBottom:8}}>Floor {f.floor}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+          {f.units.map(u=>(<div key={u.no} style={{background:`${SC[u.status]}12`,border:`2px solid ${SC[u.status]}`,borderRadius:10,padding:"10px 12px",cursor:"pointer",transition:"transform 0.15s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.03)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+            <div style={{fontSize:14,fontWeight:800,color:SC[u.status]}}>Flat {u.no}</div>
+            <div style={{fontSize:12,fontWeight:600,color:tp}}>{u.type}</div>
+            <div style={{fontSize:11,color:ts}}>{u.carpet} sqft · {u.facing}</div>
+            <div style={{fontSize:11,fontWeight:600,color:SC[u.status],margin:"3px 0"}}>{u.status}</div>
+            <div style={{fontSize:12,fontWeight:700,color:tp}}>₹{(u.price/100000).toFixed(0)}L</div>
+            {u.buyer&&<div style={{fontSize:10,color:ts,marginTop:2}}>👤 {u.buyer}</div>}
+            {u.status==="Available"&&<button onClick={()=>{setBookModal(u);setBookForm({name:"",phone:"",email:"",amount:(u.price*0.1/100000).toFixed(1)+"L"});}} style={{marginTop:6,width:"100%",background:ACCENT,color:"#fff",border:"none",borderRadius:6,padding:"4px 0",fontSize:11,cursor:"pointer",fontWeight:600}}>Book Now</button>}
+          </div>))}
+        </div>
+      </div>))}
+      <div style={{borderTop:`1px solid ${dark?"#334155":"#E2E8F0"}`,paddingTop:10,display:"flex",gap:14,flexWrap:"wrap",marginTop:8}}>{Object.entries(SC).map(([s,c])=><div key={s} style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:ts}}><span style={{width:10,height:10,borderRadius:2,background:c,display:"inline-block"}}/>{s}</div>)}</div>
+    </Card>):(<Card dark={dark}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+      <thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}>{["Flat","Type","Carpet","Status","Facing","Price","Buyer","Action"].map(h=><Th key={h} ts={ts}>{h}</Th>)}</tr></thead>
+      <tbody>{allUnits.map((u,i)=>(<tr key={i} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}>
+        <Td style={{color:tp,fontWeight:700}}>Flat {u.no}</Td><Td style={{color:tp}}>{u.type}</Td>
+        <Td style={{color:ts}}>{u.carpet} sqft</Td><Td><Badge label={u.status}/></Td>
+        <Td style={{color:ts}}>{u.facing}</Td><Td style={{color:tp,fontWeight:700}}>₹{(u.price/100000).toFixed(0)}L</Td>
+        <Td style={{color:ts,fontSize:11}}>{u.buyer||"—"}</Td>
+        <Td><button onClick={()=>u.status==="Available"?setBookModal(u):showToast(`Flat ${u.no} — ${u.status}${u.buyer?" ("+u.buyer+")":""}`,u.status==="Sold"?"info":"warning")} style={{background:u.status==="Available"?"#10B981":"transparent",color:u.status==="Available"?"#fff":ts,border:`1px solid ${u.status==="Available"?"#10B981":(dark?"#475569":"#E2E8F0")}`,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontWeight:u.status==="Available"?600:400}}>{u.status==="Available"?"Book":"View"}</button></Td>
+      </tr>))}</tbody>
+    </table></Card>)}
+    {/* BOOKING MODAL */}
+    <Modal open={!!bookModal} onClose={()=>setBookModal(null)} title={`Book Flat ${bookModal?.no} — ${bookModal?.type}`} dark={dark} width={440}>
+      {bookModal&&(<div>
+        <div style={{background:dark?"#0F172A":"#F8FAFC",borderRadius:10,padding:"12px 16px",marginBottom:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          {[["Type",bookModal.type],["Carpet Area",`${bookModal.carpet} sqft`],["Facing",bookModal.facing],["Base Price",`₹${(bookModal.price/100000).toFixed(0)}L`]].map(([l,v])=>(<div key={l}><div style={{fontSize:10,color:ts,fontWeight:600}}>{l}</div><div style={{fontSize:13,color:tp,fontWeight:600}}>{v}</div></div>))}
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {[["Customer Name *","name","text","Full name"],["Phone Number *","phone","tel","+91-"],["Email","email","email",""],["Booking Amount (₹)","amount","text",`₹${(bookModal.price*0.1/100000).toFixed(1)}L (10%)`]].map(([l,k,t,v])=>(
+            <div key={l}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>{l}</label><input type={t} value={bookForm[k]||""} placeholder={v} onChange={e=>setBookForm(f=>({...f,[k]:e.target.value}))} style={inp}/></div>
+          ))}
+        </div>
+        <div style={{background:dark?"#0F172A":"#FFFBEB",borderRadius:8,padding:"10px 14px",marginTop:12,fontSize:12,color:ts}}> ℹ️ Booking is subject to management approval. A booking confirmation will be sent via email and WhatsApp.</div>
+        <div style={{display:"flex",gap:8,marginTop:14}}><Btn onClick={confirmBooking}>✅ Confirm Booking</Btn><Btn outline dark={dark} onClick={()=>setBookModal(null)}>Cancel</Btn></div>
+      </div>)}
+    </Modal>
+  </div>);}
+
+function AssignmentManager({dark,assignments,setAssignments,showToast}){
+  const [tab,setTab]=useState("projects");
+  const [search,setSearch]=useState("");
+  const [engSearch,setEngSearch]=useState("");
+  const [modal,setModal]=useState(null);
+  const [selectedIds,setSelectedIds]=useState([]);
+  const [selRole,setSelRole]=useState("Site Engineer");
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const roles=["Lead SE","Site Engineer","SE – Finishes","MEP SE","Planning Engineer","Quantity Surveyor","Site Supervisor","Jr SE"];
+  const perms=["canDPR","canPO","canMeeting","canStock"];
+  const pLabel={canDPR:"📋 DPR",canPO:"🛒 PO",canMeeting:"📅 Meetings",canStock:"📦 Stock"};
+  const engsFor=pid=>assignments.filter(a=>a.projectId===pid).map(a=>{const eng=ALL_ENGINEERS.find(e=>e.id===a.engId);if(!eng)return null;return{...eng,a};}).filter(Boolean);
+  const projsFor=eid=>assignments.filter(a=>a.engId===eid).map(a=>{const proj=PROJECTS_INIT.find(p=>p.id===a.projectId);if(!proj)return null;return{...proj,a};}).filter(Boolean);
+  const removeA=(eid,pid)=>{setAssignments(prev=>prev.filter(a=>!(a.engId===eid&&a.projectId===pid)));showToast("Assignment removed","info");};
+  const toggleP=(eid,pid,perm)=>setAssignments(prev=>prev.map(a=>a.engId===eid&&a.projectId===pid?{...a,[perm]:!a[perm]}:a));
+  const addA=(engIds,pid,role)=>{
+    const d=new Date().toISOString().slice(0,10);
+    const news=engIds.filter(eid=>!assignments.some(a=>a.engId===eid&&a.projectId===pid)).map(eid=>({engId:eid,projectId:pid,role:role||"Site Engineer",since:d,canDPR:true,canPO:false,canMeeting:true,canStock:true}));
+    if(news.length===0){showToast("Already assigned","warning");return;}
+    setAssignments(prev=>[...prev,...news]);
+    showToast(`${news.length} engineer${news.length>1?"s":""} assigned successfully`,"success");
+    setModal(null);setSelectedIds([]);
+  };
+  const inp={padding:"8px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:13,width:"100%",boxSizing:"border-box"};
+  const fpj=PROJECTS_INIT.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())||p.code.toLowerCase().includes(search.toLowerCase()));
+  const feg=ALL_ENGINEERS.filter(e=>e.name.toLowerCase().includes(engSearch.toLowerCase())||e.role.toLowerCase().includes(engSearch.toLowerCase()));
+  return(<div>
+    <PageHeader title="Assignments" sub="Assign engineers to sites — one-to-many & many-to-one" dark={dark}>
+      <Btn outline dark={dark} onClick={()=>showToast("Assignment matrix exported to Excel","info")}>📊 Export Matrix</Btn>
+      <Btn onClick={()=>showToast("Use Engineer List tab to add engineers","info")}>+ Add Engineer</Btn>
+    </PageHeader>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:"1.5rem"}}>
+      {[{l:"Total Engineers",v:ALL_ENGINEERS.length,c:"#3B82F6"},{l:"Active Assignments",v:assignments.length,c:"#10B981"},{l:"Avg Sites/Engineer",v:(assignments.length/ALL_ENGINEERS.length).toFixed(1),c:"#F59E0B"},{l:"Multi-Eng Sites",v:PROJECTS_INIT.filter(p=>engsFor(p.id).length>1).length,c:"#8B5CF6"}].map(s=>(
+        <div key={s.l} style={{background:dark?"#1E293B":"#fff",border:`1px solid ${bd}`,borderRadius:12,padding:"12px 16px"}}><div style={{fontSize:11,color:ts,marginBottom:4}}>{s.l}</div><div style={{fontSize:26,fontWeight:800,color:s.c}}>{s.v}</div></div>
+      ))}
+    </div>
+    <TabBar dark={dark} active={tab} onChange={setTab} tabs={[["projects","🏗️ Project List"],["engineers","👷 Engineer List"],["matrix","🔢 Matrix"],["permissions","🔐 Permissions"]]}/>
+    {tab==="projects"&&(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <input placeholder="Search projects…" value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,width:"auto",maxWidth:320}}/>
+      {fpj.map(p=>{
+        const team=engsFor(p.id),pColor=p.status==="Delayed"?"#EF4444":p.progress===100?"#10B981":"#F59E0B";
+        return(<Card dark={dark} key={p.id}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,gap:12,flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+              <div style={{width:44,height:44,borderRadius:10,background:`${pColor}18`,border:`2px solid ${pColor}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>🏗️</div>
+              <div><div style={{fontSize:11,color:ACCENT,fontWeight:700}}>{p.code}</div><div style={{fontSize:15,fontWeight:800,color:tp}}>{p.name}</div><div style={{fontSize:12,color:ts}}>📍 {p.location} · {p.type}</div></div>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}><Badge label={p.status}/><Btn onClick={()=>{setModal({type:"eng",project:p});setSelectedIds([]);}}>+ Assign Engineer</Btn></div>
+          </div>
+          <ProgressBar value={p.progress} color={pColor} dark={dark}/>
+          <div style={{marginTop:12}}>
+            {team.length===0?<div style={{padding:"10px",background:dark?"#0F172A":"#FFF5F5",border:"1px dashed #EF4444",borderRadius:8,color:"#EF4444",fontSize:12,textAlign:"center"}}>⚠️ No engineers assigned</div>:(
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:ts,marginBottom:8}}>ASSIGNED TEAM ({team.length})</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:8}}>
+                  {team.map(x=>{const eng=ALL_ENGINEERS.find(e=>e.id===x.a.engId);return(<div key={x.a.engId||x.id} style={{background:dark?"#0F172A":"#F8FAFC",border:`1px solid ${bd}`,borderRadius:9,padding:"9px 11px",display:"flex",gap:9,alignItems:"flex-start"}}>
+                    <EngAvatar eng={eng} size={32} dark={dark}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:700,color:tp}}>{eng?.name}</div>
+                      <div style={{fontSize:11,color:ACCENT,fontWeight:600}}>{x.a.role}</div>
+                      <div style={{display:"flex",gap:4,marginTop:3,flexWrap:"wrap"}}>{perms.map(k=><span key={k} title={pLabel[k]} style={{fontSize:12,opacity:x.a[k]?1:0.2}}>{k==="canDPR"?"📋":k==="canPO"?"🛒":k==="canMeeting"?"📅":"📦"}</span>)}</div>
+                    </div>
+                    <button onClick={()=>removeA(x.a.engId,p.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#EF4444",fontSize:14,padding:"2px",flexShrink:0}}>✕</button>
+                  </div>);})}
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>);
+      })}
+    </div>)}
+    {tab==="engineers"&&(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <input placeholder="Search engineers…" value={engSearch} onChange={e=>setEngSearch(e.target.value)} style={{...inp,width:"auto",maxWidth:320}}/>
+      {feg.map(eng=>{
+        const sites=projsFor(eng.id),colors=["#3B82F6","#10B981","#8B5CF6","#EF4444","#F59E0B","#06B6D4","#EC4899","#84CC16"],ec=colors[ALL_ENGINEERS.findIndex(e=>e.id===eng.id)%colors.length];
+        return(<Card dark={dark} key={eng.id}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,gap:12,flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:14,alignItems:"center"}}>
+              <div style={{width:50,height:50,borderRadius:"50%",background:ec,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:800,color:"#fff",flexShrink:0,border:`3px solid ${dark?"#334155":"#E2E8F0"}`}}>{eng.avatar}</div>
+              <div><div style={{fontSize:15,fontWeight:800,color:tp}}>{eng.name}</div><div style={{fontSize:12,color:ACCENT,fontWeight:600}}>{eng.role} · {eng.dept}</div><div style={{fontSize:11,color:ts}}>📞 {eng.phone}</div><div style={{display:"flex",gap:3,marginTop:3,flexWrap:"wrap"}}>{eng.expertise.map(e=><span key={e} style={{background:dark?"#334155":"#F1F5F9",color:ts,borderRadius:10,padding:"1px 7px",fontSize:10}}>{e}</span>)}</div></div>
+            </div>
+            <div style={{display:"flex",gap:10,alignItems:"center"}}><div style={{textAlign:"right"}}><div style={{fontSize:24,fontWeight:800,color:sites.length>0?ec:"#EF4444"}}>{sites.length}</div><div style={{fontSize:11,color:ts}}>site{sites.length!==1?"s":""}</div></div><Btn onClick={()=>{setModal({type:"proj",engineer:eng});setSelectedIds([]);}}>+ Assign Site</Btn></div>
+          </div>
+          {sites.length===0?<div style={{padding:"9px",background:dark?"#0F172A":"#FFF5F5",border:"1px dashed #EF4444",borderRadius:8,color:"#EF4444",fontSize:12,textAlign:"center"}}>No sites assigned</div>:(
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:ts,marginBottom:8}}>ASSIGNED SITES ({sites.length})</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:8}}>
+                {sites.map(x=>{const proj=PROJECTS_INIT.find(p=>p.id===x.a.projectId),pc=proj?.status==="Delayed"?"#EF4444":proj?.progress===100?"#10B981":"#F59E0B";return(<div key={x.a.projectId||x.id} style={{background:dark?"#0F172A":"#F8FAFC",border:`1px solid ${bd}`,borderRadius:9,padding:"9px 11px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}}><div><div style={{fontSize:11,color:ACCENT,fontWeight:700}}>{proj?.code}</div><div style={{fontSize:12,fontWeight:700,color:tp}}>{proj?.name}</div><div style={{fontSize:10,color:ACCENT}}>{x.a.role}</div></div><button onClick={()=>removeA(eng.id,x.a.projectId)} style={{background:"none",border:"none",cursor:"pointer",color:"#EF4444",fontSize:12}}>✕</button></div>
+                  <ProgressBar value={proj?.progress||0} color={pc} dark={dark}/>
+                  <div style={{display:"flex",gap:4,marginTop:5,flexWrap:"wrap"}}>{perms.map(k=><span key={k} title={pLabel[k]} style={{background:x.a[k]?(dark?"#1E3A5F":"#EFF6FF"):(dark?"#1a0a0a":"#FFF5F5"),borderRadius:5,padding:"2px 5px",fontSize:10,color:x.a[k]?"#3B82F6":"#94A3B8"}}>{k==="canDPR"?"📋":k==="canPO"?"🛒":k==="canMeeting"?"📅":"📦"}</span>)}</div>
+                </div>);})}
+              </div>
+            </div>
+          )}
+        </Card>);
+      })}
+    </div>)}
+    {tab==="matrix"&&(<Card dark={dark}>
+      <div style={{fontSize:14,fontWeight:700,color:tp,marginBottom:4}}>Assignment Matrix</div>
+      <div style={{fontSize:12,color:ts,marginBottom:12}}>Click any cell to toggle assignment instantly</div>
+      <div style={{overflowX:"auto"}}><table style={{borderCollapse:"collapse",fontSize:12}}>
+        <thead><tr>
+          <th style={{padding:"8px 14px",textAlign:"left",color:ts,fontWeight:700,background:dark?"#0F172A":"#F8FAFC",position:"sticky",left:0,zIndex:2,minWidth:170,borderRight:`1px solid ${bd}`}}>Engineer</th>
+          {PROJECTS_INIT.map(p=><th key={p.id} style={{padding:"8px 10px",color:ts,background:dark?"#0F172A":"#F8FAFC",textAlign:"center",minWidth:96}}><div style={{fontSize:11,color:ACCENT,fontWeight:700}}>{p.code}</div><div style={{fontSize:10,color:tp}}>{p.name.length>13?p.name.slice(0,11)+"…":p.name}</div><Badge label={p.status}/></th>)}
+        </tr></thead>
+        <tbody>{ALL_ENGINEERS.map(eng=>(
+          <tr key={eng.id} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}>
+            <td style={{padding:"8px 14px",background:dark?"#1E293B":"#fff",position:"sticky",left:0,zIndex:1,borderRight:`1px solid ${bd}`}}><div style={{display:"flex",alignItems:"center",gap:8}}><EngAvatar eng={eng} size={24} dark={dark}/><div><div style={{fontSize:12,fontWeight:700,color:tp}}>{eng.name}</div><div style={{fontSize:10,color:ts}}>{eng.role}</div></div></div></td>
+            {PROJECTS_INIT.map(p=>{const has=assignments.some(a=>a.engId===eng.id&&a.projectId===p.id),asgn=assignments.find(a=>a.engId===eng.id&&a.projectId===p.id);return(<td key={p.id} style={{padding:"5px",textAlign:"center",background:has?(dark?"#0E2318":"#F0FDF4"):"",cursor:"pointer"}} onClick={()=>has?removeA(eng.id,p.id):addA([eng.id],p.id,"Site Engineer")}><div style={{borderRadius:7,padding:"4px 5px",transition:"background 0.1s"}} onMouseEnter={e=>e.currentTarget.style.background=dark?"#334155":"#E2E8F0"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{has?(<div><div style={{fontSize:15}}>✅</div><div style={{fontSize:9,color:"#10B981",fontWeight:600}}>{asgn?.role?.slice(0,7)}</div></div>):(<div style={{fontSize:15,opacity:0.2}}>🔒</div>)}</div></td>);})}
+          </tr>
+        ))}</tbody>
+      </table></div>
+    </Card>)}
+    {tab==="permissions"&&(<Card dark={dark}>
+      <div style={{fontSize:14,fontWeight:700,color:tp,marginBottom:4}}>Per-Assignment Permissions</div>
+      <div style={{fontSize:12,color:ts,marginBottom:12}}>Click ✅/❌ to toggle each permission</div>
+      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+        <thead><tr style={{background:dark?"#0F172A":"#F8FAFC"}}><Th ts={ts}>Engineer</Th><Th ts={ts}>Project</Th><Th ts={ts}>Role</Th><Th ts={ts}>📋 DPR</Th><Th ts={ts}>🛒 PO</Th><Th ts={ts}>📅 Meetings</Th><Th ts={ts}>📦 Stock</Th></tr></thead>
+        <tbody>{assignments.map((a,i)=>{const eng=ALL_ENGINEERS.find(e=>e.id===a.engId),proj=PROJECTS_INIT.find(p=>p.id===a.projectId);return(<tr key={i} style={{borderTop:`1px solid ${dark?"#334155":"#F1F5F9"}`}}><Td><div style={{display:"flex",alignItems:"center",gap:7}}><EngAvatar eng={eng} size={24} dark={dark}/><span style={{color:tp,fontWeight:600,fontSize:12}}>{eng?.name}</span></div></Td><Td style={{color:ACCENT,fontWeight:700}}>{proj?.code}</Td><Td style={{color:ts,fontSize:11}}>{a.role}</Td>{perms.map(perm=>(<Td key={perm} style={{textAlign:"center"}}><button onClick={()=>toggleP(a.engId,a.projectId,perm)} style={{background:"none",border:"none",cursor:"pointer",fontSize:17,padding:"2px"}}>{a[perm]?"✅":"❌"}</button></Td>))}</tr>);})}
+        </tbody>
+      </table></div>
+    </Card>)}
+    {/* ASSIGN ENG MODAL */}
+    <Modal open={modal?.type==="eng"} onClose={()=>setModal(null)} title={`Assign Engineers — ${modal?.project?.name}`} dark={dark} width={460}>
+      {modal?.type==="eng"&&(<div>
+        <div style={{marginBottom:12}}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>Role on this Site</label><select value={selRole} onChange={e=>setSelRole(e.target.value)} style={inp}>{roles.map(r=><option key={r}>{r}</option>)}</select></div>
+        <div style={{fontSize:11,fontWeight:700,color:ts,marginBottom:8}}>SELECT ENGINEERS (tap to toggle)</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16,maxHeight:260,overflowY:"auto"}}>
+          {ALL_ENGINEERS.filter(e=>!assignments.some(a=>a.engId===e.id&&a.projectId===modal.project?.id)).map(eng=>{
+            const sel=selectedIds.includes(eng.id),cur=assignments.filter(a=>a.engId===eng.id).length;
+            return(<div key={eng.id} onClick={()=>setSelectedIds(prev=>sel?prev.filter(x=>x!==eng.id):[...prev,eng.id])} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 12px",borderRadius:10,border:`2px solid ${sel?ACCENT:(dark?"#334155":"#E2E8F0")}`,background:sel?(dark?"#1a1200":"#FFFBEB"):"transparent",cursor:"pointer",transition:"all 0.15s"}}>
+              <EngAvatar eng={eng} size={32} dark={dark}/><div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:tp}}>{eng.name}</div><div style={{fontSize:11,color:ts}}>{eng.role} · {cur} site{cur!==1?"s":""}</div></div>
+              <div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${sel?ACCENT:(dark?"#475569":"#CBD5E1")}`,background:sel?ACCENT:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{sel&&<span style={{fontSize:11,color:"#fff",fontWeight:700}}>✓</span>}</div>
+            </div>);
+          })}
+          {ALL_ENGINEERS.filter(e=>!assignments.some(a=>a.engId===e.id&&a.projectId===modal?.project?.id)).length===0&&<div style={{textAlign:"center",color:ts,fontSize:13,padding:"16px 0"}}>All engineers already assigned to this project.</div>}
+        </div>
+        <div style={{display:"flex",gap:8}}><Btn disabled={selectedIds.length===0} onClick={()=>addA(selectedIds,modal.project?.id,selRole)}>Assign {selectedIds.length>0?`(${selectedIds.length})`:"Engineers"}</Btn><Btn outline dark={dark} onClick={()=>{setModal(null);setSelectedIds([]);}}>Cancel</Btn></div>
+      </div>)}
+    </Modal>
+    {/* ASSIGN PROJ MODAL */}
+    <Modal open={modal?.type==="proj"} onClose={()=>setModal(null)} title={`Assign Sites — ${modal?.engineer?.name}`} dark={dark} width={480}>
+      {modal?.type==="proj"&&(<div>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}><EngAvatar eng={modal.engineer} size={42} dark={dark}/><div><div style={{fontSize:15,fontWeight:800,color:tp}}>{modal.engineer?.name}</div><div style={{fontSize:13,color:ACCENT,fontWeight:600}}>{modal.engineer?.role}</div></div></div>
+        <div style={{marginBottom:12}}><label style={{fontSize:11,color:ts,display:"block",marginBottom:3,fontWeight:600}}>Role on Selected Sites</label><select value={selRole} onChange={e=>setSelRole(e.target.value)} style={inp}>{roles.map(r=><option key={r}>{r}</option>)}</select></div>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16,maxHeight:280,overflowY:"auto"}}>
+          {PROJECTS_INIT.filter(p=>!assignments.some(a=>a.engId===modal.engineer?.id&&a.projectId===p.id)).map(p=>{
+            const sel=selectedIds.includes(p.id),ts2=assignments.filter(a=>a.projectId===p.id).length,pc=p.status==="Delayed"?"#EF4444":p.progress===100?"#10B981":"#F59E0B";
+            return(<div key={p.id} onClick={()=>setSelectedIds(prev=>sel?prev.filter(x=>x!==p.id):[...prev,p.id])} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 12px",borderRadius:10,border:`2px solid ${sel?ACCENT:(dark?"#334155":"#E2E8F0")}`,background:sel?(dark?"#1a1200":"#FFFBEB"):"transparent",cursor:"pointer",transition:"all 0.15s"}}>
+              <div style={{width:36,height:36,borderRadius:8,background:`${pc}18`,border:`2px solid ${pc}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16}}>🏗️</div>
+              <div style={{flex:1}}><div style={{fontSize:11,color:ACCENT,fontWeight:700}}>{p.code}</div><div style={{fontSize:13,fontWeight:700,color:tp}}>{p.name}</div><div style={{fontSize:11,color:ts}}>{ts2} engineer{ts2!==1?"s":""} assigned</div></div>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}><Badge label={p.status}/><div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${sel?ACCENT:(dark?"#475569":"#CBD5E1")}`,background:sel?ACCENT:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{fontSize:11,color:"#fff",fontWeight:700}}>✓</span>}</div></div>
+            </div>);
+          })}
+        </div>
+        <div style={{display:"flex",gap:8}}><Btn disabled={selectedIds.length===0} onClick={()=>{selectedIds.forEach(pid=>addA([modal.engineer?.id],pid,selRole));}}>Assign to {selectedIds.length>0?`${selectedIds.length} site${selectedIds.length>1?"s":""}`:""}{!selectedIds.length?"Sites":""}</Btn><Btn outline dark={dark} onClick={()=>{setModal(null);setSelectedIds([]);}}>Cancel</Btn></div>
+      </div>)}
+    </Modal>
+  </div>);}
+
+function SimpleModule({title,icon,sub,dark,showToast}){
+  const tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B";
+  return(<div><PageHeader title={title} sub={sub} dark={dark}><Btn onClick={()=>showToast(`Opening ${title}…`,"info")}>+ New</Btn></PageHeader><Card dark={dark}><div style={{padding:"3rem",textAlign:"center"}}><div style={{fontSize:56,marginBottom:12}}>{icon}</div><div style={{fontSize:16,fontWeight:700,color:tp,marginBottom:8}}>{title}</div><div style={{fontSize:13,color:ts,marginBottom:20,maxWidth:380,margin:"0 auto 20px"}}>{sub}</div><Btn onClick={()=>showToast(`${title} module opened`,"info")}>Get Started</Btn></div></Card></div>);}
+
+const ADMIN_USER={id:"ADMIN",role:"Super Admin",name:"Rajeev Kumar",engId:null,avatar:"RK"};
+const USER_OPTIONS=[ADMIN_USER,...ALL_ENGINEERS.map(e=>({id:e.id,role:e.role,name:e.name,engId:e.id,avatar:e.avatar}))];
+
+export default function App(){
+  const [mod,setMod]=useState("assignments");
+  const [dark,setDark]=useState(false);
+  const [collapsed,setCollapsed]=useState(false);
+  const [currentUser,setCurrentUser]=useState(ADMIN_USER);
+  const [userMenuOpen,setUserMenuOpen]=useState(false);
+  const [assignments,setAssignments]=useState(DEFAULT_ASSIGNMENTS);
+  const [approvals,setApprovals]=useState(APPROVALS_INIT);
+  const [tasks,setTasks]=useState(TASKS_INIT);
+  const [meetings,setMeetings]=useState(MEETINGS_INIT);
+  const [poList,setPoList]=useState(PO_INIT);
+  const [materials,setMaterials]=useState(MATERIALS_INIT);
+  const [notifs,setNotifs]=useState(NOTIFS_INIT);
+  const [toast,setToast]=useState(null);
+  const [notifOpen,setNotifOpen]=useState(false);
+  const [searchQ,setSearchQ]=useState("");
+  const [searchOpen,setSearchOpen]=useState(false);
+
+  const showToast=useCallback((msg,type="success")=>{
+    setToast({msg,type});
+    setTimeout(()=>setToast(null),3200);
+  },[]);
+
+  const bg=dark?"#0F172A":"#F1F5F9",tb=dark?"#1E293B":"#fff",tp=dark?"#F1F5F9":"#0F172A",ts=dark?"#94A3B8":"#64748B",bd=dark?"#334155":"#E2E8F0";
+  const isAdmin=!currentUser.engId;
+  const unreadNotifs=notifs.filter(n=>!n.read).length;
+
+  const visibleProjects=useMemo(()=>{
+    if(isAdmin)return PROJECTS_INIT;
+    return PROJECTS_INIT.filter(p=>assignments.some(a=>a.engId===currentUser.engId&&a.projectId===p.id));
+  },[currentUser,assignments,isAdmin]);
+
+  const activeLabel=NAV.flatMap(s=>s.items).find(i=>i.key===mod)?.label||mod;
+
+  const shared={dark,visibleProjects,currentUser,assignments,setAssignments,showToast};
+
+  const renderMod=()=>{
+    switch(mod){
+      case "dashboard":   return <OwnerDashboard {...shared} approvals={approvals} setApprovals={setApprovals}/>;
+      case "assignments": return <AssignmentManager {...shared}/>;
+      case "projects":    return <ProjectsList {...shared} setMod={setMod}/>;
+      case "dpr":         return <DPRModule {...shared}/>;
+      case "meetings":    return <MeetingsModule {...shared} meetings={meetings} setMeetings={setMeetings}/>;
+      case "purchase":    return <Purchase {...shared} poList={poList} setPoList={setPoList}/>;
+      case "material":    return <Materials {...shared} materials={materials} setMaterials={setMaterials} setMod={setMod}/>;
+      case "inventory":   return <FlatInventory dark={dark} showToast={showToast}/>;
+      case "tasks":       return <Tasks {...shared} tasks={tasks} setTasks={setTasks}/>;
+      case "labour":      return <SimpleModule dark={dark} title="Labour Management"    icon="👷" sub="Contractor registration, attendance, wage management." showToast={showToast}/>;
+      case "sales":       return <SimpleModule dark={dark} title="Sales & CRM"          icon="💼" sub="Leads, pipeline, flat bookings, customer management." showToast={showToast}/>;
+      case "finance":     return <SimpleModule dark={dark} title="Finance & Accounting" icon="💰" sub="Revenue, expenses, GST reports, P&L, cash flow." showToast={showToast}/>;
+      case "hr":          return <SimpleModule dark={dark} title="HR & Payroll"         icon="👥" sub="Employee attendance, leave, payroll, appraisals." showToast={showToast}/>;
+      case "settings":    return <SimpleModule dark={dark} title="Settings"             icon="⚙️" sub="Company setup, users, roles, permissions, system config." showToast={showToast}/>;
+      default:            return <SimpleModule dark={dark} title={mod} icon="🏗️" sub="" showToast={showToast}/>;
+    }
+  };
+
+  return(
+    <div style={{display:"flex",height:"100vh",background:bg,overflow:"hidden",fontFamily:"system-ui,-apple-system,sans-serif",fontSize:14}}
+      onClick={()=>{userMenuOpen&&setUserMenuOpen(false);notifOpen&&setNotifOpen(false);searchQ&&searchOpen&&setSearchOpen(false);}}>
+
+      {/* ── SIDEBAR ── */}
+      <aside style={{width:collapsed?62:232,minWidth:collapsed?62:232,background:SIDEBAR,display:"flex",flexDirection:"column",transition:"all 0.2s",overflow:"hidden",zIndex:20,flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 12px",height:58,borderBottom:"1px solid rgba(255,255,255,0.08)",flexShrink:0}}>
+          <div style={{width:34,height:34,borderRadius:8,background:ACCENT,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:900,fontSize:17,color:SIDEBAR}}>S</div>
+          {!collapsed&&<div style={{overflow:"hidden"}}><div style={{fontSize:14,fontWeight:900,color:"#fff",letterSpacing:"0.02em"}}>SANJINEER</div><div style={{fontSize:9,color:"rgba(255,255,255,0.4)",letterSpacing:"0.06em",marginTop:1}}>CONSTRUCTION ERP</div></div>}
+          <button onClick={()=>setCollapsed(!collapsed)} style={{marginLeft:"auto",background:"none",border:"none",color:"rgba(255,255,255,0.4)",cursor:"pointer",fontSize:16,padding:4,flexShrink:0,lineHeight:1}}>{collapsed?"›":"‹"}</button>
+        </div>
+        {!collapsed&&!isAdmin&&(
+          <div style={{margin:"8px 10px 0",background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,padding:"6px 10px"}}>
+            <div style={{fontSize:10,color:ACCENT,fontWeight:700}}>VIEWING AS</div>
+            <div style={{fontSize:12,fontWeight:700,color:"#fff"}}>{currentUser.name}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>{visibleProjects.length} site{visibleProjects.length!==1?"s":""} accessible</div>
+          </div>
+        )}
+        <div style={{flex:1,overflowY:"auto",padding:"6px 0"}}>
+          {NAV.map(section=>(
+            <div key={section.section}>
+              {!collapsed&&<div style={{padding:"10px 16px 3px",fontSize:9.5,fontWeight:800,color:"rgba(255,255,255,0.28)",letterSpacing:"0.1em",textTransform:"uppercase"}}>{section.section}</div>}
+              {section.items.map(item=>{
+                const active=mod===item.key;
+                if(item.key==="assignments"&&!isAdmin)return null;
+                if((item.key==="finance"||item.key==="sales"||item.key==="hr")&&!isAdmin)return null;
+                return(
+                  <button key={item.key} onClick={()=>setMod(item.key)} title={collapsed?item.label:""}
+                    style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:collapsed?"10px 0":"9px 16px",border:"none",background:active?"rgba(245,158,11,0.12)":"transparent",borderLeft:active?`3px solid ${ACCENT}`:"3px solid transparent",cursor:"pointer",justifyContent:collapsed?"center":"flex-start",transition:"background 0.12s"}}
+                   onMouseEnter={e=>{if(!active)e.currentTarget.style.background="rgba(255,255,255,0.05)"}}
+                    onMouseLeave={e=>{if(!active)e.currentTarget.style.background="transparent"}}>
+                    <span style={{fontSize:15,flexShrink:0,lineHeight:1}}>{item.icon}</span>
+                    {!collapsed&&<span style={{fontSize:12.5,fontWeight:active?700:400,color:active?ACCENT:"rgba(255,255,255,0.65)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.label}</span>}
+                    {!collapsed&&item.key==="assignments"&&<span style={{marginLeft:"auto",fontSize:10,background:`${ACCENT}30`,color:ACCENT,borderRadius:10,padding:"1px 7px",fontWeight:700,flexShrink:0}}>{assignments.length}</span>}
+                    {!collapsed&&item.key==="tasks"&&tasks.filter(t=>t.status!=="Done").length>0&&<span style={{marginLeft:"auto",fontSize:10,background:"#EF444430",color:"#EF4444",borderRadius:10,padding:"1px 7px",fontWeight:700,flexShrink:0}}>{tasks.filter(t=>t.status!=="Done").length}</span>}
+                    {!collapsed&&item.key==="purchase"&&poList.filter(p=>p.status==="Pending").length>0&&<span style={{marginLeft:"auto",fontSize:10,background:"#F59E0B30",color:"#F59E0B",borderRadius:10,padding:"1px 7px",fontWeight:700,flexShrink:0}}>{poList.filter(p=>p.status==="Pending").length}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        <div style={{padding:"10px 12px",borderTop:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:9,flexShrink:0}}>
+          <div style={{width:30,height:30,borderRadius:"50%",background:ACCENT,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:800,color:SIDEBAR}}>{currentUser.avatar}</div>
+          {!collapsed&&<div style={{overflow:"hidden",flex:1}}><div style={{fontSize:11,fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{currentUser.name}</div><div style={{fontSize:10,color:isAdmin?ACCENT:"rgba(255,255,255,0.5)"}}>{currentUser.role}</div></div>}
+        </div>
+      </aside>
+
+      {/* ── MAIN AREA ── */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+
+        {/* TOPBAR */}
+        <header style={{height:58,background:tb,borderBottom:`1px solid ${bd}`,display:"flex",alignItems:"center",padding:"0 1.25rem",gap:10,flexShrink:0}}>
+          {/* Global Search */}
+          <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}>
+            <div style={{position:"relative"}} onClick={e=>e.stopPropagation()}>
+              <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:13,color:ts,pointerEvents:"none"}}>🔍</span>
+              <input
+                placeholder="Search…"
+                value={searchQ}
+                onChange={e=>{setSearchQ(e.target.value);setSearchOpen(true);}}
+                onFocus={()=>setSearchOpen(true)}
+                style={{padding:"7px 12px 7px 30px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,fontSize:12.5,width:300,outline:"none"}}
+              />
+              {searchOpen&&searchQ.length>=2&&<SearchResults query={searchQ} dark={dark} setMod={(m)=>{setMod(m);setSearchOpen(false);setSearchQ("");}} onClose={()=>{setSearchOpen(false);setSearchQ("");}}/>}
+            </div>
+          </div>
+
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {/* View As switcher */}
+            <div style={{position:"relative"}} onClick={e=>e.stopPropagation()}>
+              <button onClick={()=>setUserMenuOpen(!userMenuOpen)}
+                style={{display:"flex",alignItems:"center",gap:8,padding:"6px 12px",borderRadius:8,border:`1px solid ${bd}`,background:dark?"#0F172A":"#F8FAFC",color:tp,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>
+                <span>{isAdmin?"🔑":"👷"}</span>
+                <span>View as: <b style={{color:ACCENT}}>{isAdmin?"Admin":currentUser.name.split(" ")[0]}</b></span>
+                <span style={{fontSize:10,marginLeft:2}}>▾</span>
+              </button>
+              {userMenuOpen&&(
+                <div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:dark?"#1E293B":"#fff",border:`1px solid ${bd}`,borderRadius:10,boxShadow:"0 8px 32px rgba(0,0,0,0.15)",zIndex:100,minWidth:270,maxHeight:380,overflowY:"auto"}}>
+                  <div style={{padding:"8px 12px",fontSize:11,fontWeight:700,color:ts,borderBottom:`1px solid ${bd}`}}>SWITCH USER VIEW</div>
+                  {USER_OPTIONS.map(u=>{
+                    const isCurr=u.id===currentUser.id,pCount=u.engId?assignments.filter(a=>a.engId===u.engId).length:PROJECTS_INIT.length;
+                    return(
+                      <div key={u.id} onClick={()=>{setCurrentUser(u);setUserMenuOpen(false);setMod(u.engId?"projects":"dashboard");showToast(`Switched to ${u.name}'s view`,"info");}}
+                        style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",cursor:"pointer",background:isCurr?(dark?"#0F172A":"#FFFBEB"):"",transition:"background 0.1s"}}
+                       onMouseEnter={e=>{if(!isCurr)e.currentTarget.style.background=dark?"#0F172A":"#F8FAFC"}}
+                        onMouseLeave={e=>{if(!isCurr)e.currentTarget.style.background=""}}>
+                        <div style={{width:30,height:30,borderRadius:"50%",background:u.engId?"#3B82F6":ACCENT,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}}>{u.avatar}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,fontWeight:700,color:tp}}>{u.name}{isCurr?" ✓":""}</div>
+                          <div style={{fontSize:10,color:ts}}>{u.role} · {pCount} site{pCount!==1?"s":""}</div>
+                        </div>
+                        {u.engId&&(<div style={{display:"flex",gap:2,flexShrink:0}}>
+                          {["canDPR","canPO","canMeeting","canStock"].map(perm=>{const hasAny=assignments.some(a=>a.engId===u.engId&&a[perm]);return <span key={perm} title={perm} style={{fontSize:11,opacity:hasAny?1:0.2}}>{perm==="canDPR"?"📋":perm==="canPO"?"🛒":perm==="canMeeting"?"📅":"📦"}</span>;})}
+                        </div>)}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Dark mode */}
+            <button onClick={()=>setDark(!dark)} style={{width:34,height:34,borderRadius:8,border:`1px solid ${bd}`,background:"transparent",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}} title={dark?"Switch to Light Mode":"Switch to Dark Mode"}>{dark?"☀️":"🌙"}</button>
+
+            {/* Notification bell */}
+            <div style={{position:"relative"}} onClick={e=>e.stopPropagation()}>
+              <button onClick={()=>{setNotifOpen(!notifOpen);setUserMenuOpen(false);}} style={{position:"relative",width:34,height:34,borderRadius:8,border:`1px solid ${bd}`,background:"transparent",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}} title="Notifications">
+                🔔{unreadNotifs>0&&<span style={{position:"absolute",top:5,right:5,width:7,height:7,borderRadius:"50%",background:"#EF4444",border:`1.5px solid ${tb}`}}/>}
+              </button>
+              {notifOpen&&<NotifDropdown notifs={notifs} setNotifs={setNotifs} dark={dark} onClose={()=>setNotifOpen(false)}/>}
+            </div>
+
+            {/* Avatar */}
+            <div style={{width:32,height:32,borderRadius:"50%",background:ACCENT,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:SIDEBAR,cursor:"pointer"}} onClick={()=>showToast("Profile settings coming soon","info")}>{currentUser.avatar}</div>
+          </div>
+        </header>
+
+        {/* BREADCRUMB */}
+        <div style={{height:34,background:tb,borderBottom:`1px solid ${dark?"#1E293B":"#F1F5F9"}`,display:"flex",alignItems:"center",padding:"0 1.25rem",gap:6,fontSize:12,color:ts,flexShrink:0}}>
+          <span>Sanjineer ERP</span>
+          <span>›</span>
+          <span style={{color:ACCENT,fontWeight:700}}>{activeLabel}</span>
+          {!isAdmin&&(<><span style={{marginLeft:6,color:ts}}>·</span><span style={{marginLeft:4,color:"#8B5CF6",fontWeight:600,fontSize:11}}>{currentUser.name} — {currentUser.role}</span><span style={{marginLeft:4,color:ts,fontSize:11}}>· {visibleProjects.length} site{visibleProjects.length!==1?"s":""}</span></>)}
+          {/* Live badges */}
+          <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+            {approvals.length>0&&<span style={{background:"#EF444420",color:"#EF4444",borderRadius:12,padding:"2px 9px",fontSize:11,fontWeight:600,cursor:"pointer"}} onClick={()=>setMod("dashboard")}>{approvals.length} approvals pending</span>}
+            {tasks.filter(t=>t.status!=="Done"&&t.due===new Date().toISOString().slice(0,10)).length>0&&<span style={{background:"#F59E0B20",color:"#F59E0B",borderRadius:12,padding:"2px 9px",fontSize:11,fontWeight:600,cursor:"pointer"}} onClick={()=>setMod("tasks")}>⏰ Tasks due today</span>}
+          </div>
+        </div>
+
+        {/* CONTENT */}
+        <main style={{flex:1,overflowY:"auto",padding:"1.25rem"}}>
+          {renderMod()}
+        </main>
+      </div>
+
+      {/* TOAST */}
+      <Toast toast={toast}/>
+    </div>
+  );
+}
